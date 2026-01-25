@@ -2,7 +2,39 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import styles from './page.module.css'
+
+const TITLE = "dont login"
+
+function FloatingLetter({ letter, index }: { letter: string; index: number }) {
+  return (
+    <motion.span
+      className={styles.letter}
+      animate={{
+        y: [0, -8, 0],
+      }}
+      transition={{
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut",
+        delay: index * 0.15,
+      }}
+    >
+      {letter === ' ' ? '\u00A0' : letter}
+    </motion.span>
+  )
+}
+
+function FloatingTitle() {
+  return (
+    <div className={styles.floatingTitle}>
+      {TITLE.split('').map((letter, index) => (
+        <FloatingLetter key={index} letter={letter} index={index} />
+      ))}
+    </div>
+  )
+}
 
 function LoginForm() {
   const [password, setPassword] = useState('')
@@ -28,7 +60,8 @@ function LoginForm() {
         router.push(from)
         router.refresh()
       } else {
-        setError('Invalid password')
+        const data = await res.json()
+        setError(data.error || 'Invalid password')
       }
     } catch {
       setError('Something went wrong')
@@ -39,10 +72,9 @@ function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
-      <h1 className={styles.title}>LazyList</h1>
       <input
         type="password"
-        placeholder="Password"
+        placeholder="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         className={styles.input}
@@ -50,7 +82,7 @@ function LoginForm() {
       />
       {error && <p className={styles.error}>{error}</p>}
       <button type="submit" className={styles.button} disabled={loading}>
-        {loading ? 'Checking...' : 'Enter'}
+        {loading ? '...' : 'enter'}
       </button>
     </form>
   )
@@ -59,9 +91,22 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <main className={styles.main}>
-      <Suspense fallback={<div className={styles.form}><h1 className={styles.title}>LazyList</h1></div>}>
-        <LoginForm />
-      </Suspense>
+      <video
+        className={styles.bgVideo}
+        autoPlay
+        loop
+        muted
+        playsInline
+      >
+        <source src="/lazy_list_vid1.webm" type="video/webm" />
+      </video>
+
+      <div className={styles.content}>
+        <FloatingTitle />
+        <Suspense fallback={<div className={styles.form} />}>
+          <LoginForm />
+        </Suspense>
+      </div>
     </main>
   )
 }
