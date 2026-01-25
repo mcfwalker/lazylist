@@ -32,6 +32,22 @@
   border-color: var(--accent);
 }
 
+.logout {
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.logout:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+
 .filters {
   display: flex;
   gap: 12px;

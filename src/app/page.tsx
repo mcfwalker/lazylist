@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Item } from '@/lib/supabase'
 import styles from './page.module.css'
 
@@ -9,6 +10,7 @@ const CONTENT_TYPES = ['all', 'repo', 'technique', 'tool', 'resource', 'person']
 const STATUSES = ['all', 'processed', 'pending', 'failed']
 
 export default function Home() {
+  const router = useRouter()
   const [items, setItems] = useState<Item[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -17,6 +19,11 @@ export default function Home() {
   const [contentType, setContentType] = useState('all')
   const [status, setStatus] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  const handleLogout = async () => {
+    await fetch('/api/auth', { method: 'DELETE' })
+    router.push('/login')
+  }
 
   const fetchItems = useCallback(async () => {
     setLoading(true)
@@ -74,7 +81,7 @@ export default function Home() {
   return (
     <main className={styles.main}>
       <header className={styles.header}>
-        <h1 className={styles.title}>LazyList</h1>
+        <h1 className={styles.title}>lazylist</h1>
         <input
           type="text"
           placeholder="Search..."
@@ -82,6 +89,9 @@ export default function Home() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <button onClick={handleLogout} className={styles.logout}>
+          logout
+        </button>
       </header>
 
       <div className={styles.filters}>
