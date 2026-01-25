@@ -25,14 +25,16 @@ export function ThemeToggle() {
     <button
       onClick={toggle}
       style={{
-        padding: '8px 12px',
-        fontSize: '13px',
-        border: '1px solid var(--border)',
-        borderRadius: '6px',
+        padding: '4px',
+        fontSize: '16px',
+        border: 'none',
         background: 'transparent',
-        color: 'var(--muted-foreground)',
         cursor: 'pointer',
+        opacity: 0.7,
+        transition: 'opacity 0.15s',
       }}
+      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
       title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       {dark ? '☀️' : '🌙'}

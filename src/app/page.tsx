@@ -83,17 +83,19 @@ export default function Home() {
     <main className={styles.main}>
       <header className={styles.header}>
         <h1 className={styles.title}>lazylist</h1>
-        <input
-          type="text"
-          placeholder="Search..."
-          className={styles.search}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <ThemeToggle />
-        <button onClick={handleLogout} className={styles.logout}>
-          logout
-        </button>
+        <div className={styles.headerRight}>
+          <input
+            type="text"
+            placeholder="search..."
+            className={styles.search}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <ThemeToggle />
+          <button onClick={handleLogout} className={styles.logout}>
+            logout
+          </button>
+        </div>
       </header>
 
       <div className={styles.filters}>
