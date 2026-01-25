@@ -1,11 +1,19 @@
 /* Viewport - white background */
 .main {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: white;
   padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Ensure html/body don't show through */
+:global(html),
+:global(body) {
+  background: white;
 }
 
 /* Side by side container */
