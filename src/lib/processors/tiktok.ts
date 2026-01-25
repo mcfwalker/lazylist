@@ -1,4 +1,4 @@
-// TikTok processor using ElevenLabs for transcription
+// TikTok processor using OpenAI for transcription
 
 interface TikTokResult {
   transcript: string
@@ -34,38 +34,13 @@ async function getTikTokVideoUrl(tiktokUrl: string): Promise<string | null> {
   }
 }
 
-// Try transcribing via URL first, fall back to file upload
-async function transcribeWithElevenLabs(
+// Transcribe video using OpenAI's GPT-4o Mini Transcribe
+async function transcribeWithOpenAI(
   videoUrl: string,
   apiKey: string
 ): Promise<string | null> {
-  // First try: use cloud_storage_url (faster, no download needed)
   try {
-    const formData = new FormData()
-    formData.append('model_id', 'scribe_v1')
-    formData.append('cloud_storage_url', videoUrl)
-
-    const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
-      method: 'POST',
-      headers: { 'xi-api-key': apiKey },
-      body: formData,
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      if (data.text) {
-        return data.text
-      }
-    } else {
-      const error = await response.text()
-      console.log('cloud_storage_url failed, trying file upload:', error)
-    }
-  } catch (err) {
-    console.log('cloud_storage_url attempt failed:', err)
-  }
-
-  // Second try: download and upload file
-  try {
+    // Download video first (OpenAI requires file upload)
     const videoResponse = await fetch(videoUrl)
     if (!videoResponse.ok) {
       console.error('Failed to download video:', videoResponse.status)
@@ -75,32 +50,32 @@ async function transcribeWithElevenLabs(
     const videoBlob = await videoResponse.blob()
     const formData = new FormData()
     formData.append('file', videoBlob, 'video.mp4')
-    formData.append('model_id', 'scribe_v1')
+    formData.append('model', 'gpt-4o-mini-transcribe')
 
-    const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
-      headers: { 'xi-api-key': apiKey },
+      headers: { 'Authorization': `Bearer ${apiKey}` },
       body: formData,
     })
 
     if (!response.ok) {
       const error = await response.text()
-      console.error(`ElevenLabs file upload error: ${response.status}`, error)
+      console.error(`OpenAI transcription error: ${response.status}`, error)
       return null
     }
 
     const data = await response.json()
     return data.text || null
   } catch (error) {
-    console.error('File upload transcription error:', error)
+    console.error('Transcription error:', error)
     return null
   }
 }
 
 export async function processTikTok(url: string): Promise<TikTokResult | null> {
-  const apiKey = process.env.ELEVENLABS_API_KEY
+  const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
-    console.error('ELEVENLABS_API_KEY not configured')
+    console.error('OPENAI_API_KEY not configured')
     return null
   }
 
@@ -114,9 +89,9 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
     }
     console.log('Got video URL:', videoUrl.substring(0, 100) + '...')
 
-    // Step 2: Transcribe with ElevenLabs
-    console.log('Transcribing with ElevenLabs...')
-    const transcript = await transcribeWithElevenLabs(videoUrl, apiKey)
+    // Step 2: Transcribe with OpenAI
+    console.log('Transcribing with OpenAI...')
+    const transcript = await transcribeWithOpenAI(videoUrl, apiKey)
     if (!transcript) {
       console.error('Transcription failed')
       return null
