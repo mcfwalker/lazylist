@@ -8,6 +8,14 @@
   overflow: hidden;
 }
 
+@media (max-width: 768px) {
+  .main {
+    justify-content: center;
+    padding-right: 0;
+    padding: 20px;
+  }
+}
+
 .bgVideo {
   position: absolute;
   top: 0;
@@ -34,6 +42,12 @@
   font-size: 64px;
   color: #000000;
   user-select: none;
+}
+
+@media (max-width: 768px) {
+  .floatingTitle {
+    font-size: 42px;
+  }
 }
 
 .letter {
