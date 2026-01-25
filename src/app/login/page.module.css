@@ -10,7 +10,8 @@
   min-height: 100vh;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-right: 10%;
   position: relative;
   overflow: hidden;
 }
