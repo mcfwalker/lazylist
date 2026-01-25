@@ -142,23 +142,25 @@ export default function LoginPage() {
 
   return (
     <main className={styles.main}>
-      <video
-        ref={videoRef}
-        className={styles.bgVideo}
-        autoPlay
-        loop
-        muted
-        playsInline
-      >
-        <source src="/lazy_list_vid1.mp4" type="video/mp4" />
-        <source src="/lazy_list_vid1.webm" type="video/webm" />
-      </video>
+      <div className={styles.container}>
+        <video
+          ref={videoRef}
+          className={styles.bgVideo}
+          autoPlay
+          loop
+          muted
+          playsInline
+        >
+          <source src="/lazy_list_vid1.mp4" type="video/mp4" />
+          <source src="/lazy_list_vid1.webm" type="video/webm" />
+        </video>
 
-      <div className={styles.content}>
-        <FloatingTitle isColorful={isColorful} />
-        <Suspense fallback={<div className={styles.form} />}>
-          <LoginForm />
-        </Suspense>
+        <div className={styles.content}>
+          <FloatingTitle isColorful={isColorful} />
+          <Suspense fallback={<div className={styles.form} />}>
+            <LoginForm />
+          </Suspense>
+        </div>
       </div>
     </main>
   )

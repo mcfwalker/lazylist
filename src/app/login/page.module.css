@@ -1,21 +1,31 @@
+/* Viewport - white background */
 .main {
   min-height: 100vh;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  padding-right: 18%;
+  justify-content: center;
+  background: white;
+}
+
+/* Centered container with max size */
+.container {
   position: relative;
+  width: 100%;
+  max-width: 800px;
+  max-height: 600px;
+  aspect-ratio: 4 / 3;
+  border-radius: 12px;
   overflow: hidden;
 }
 
-@media (max-width: 768px) {
-  .main {
-    justify-content: center;
-    padding-right: 0;
-    padding: 20px;
+@media (max-width: 840px) {
+  .container {
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
   }
 }
 
+/* Video fills the container */
 .bgVideo {
   position: absolute;
   top: 0;
@@ -26,13 +36,20 @@
   z-index: 0;
 }
 
+/* Content overlays the video */
 .content {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 24px;
+  padding: 20px;
 }
 
 .floatingTitle {
@@ -44,7 +61,7 @@
   user-select: none;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 600px) {
   .floatingTitle {
     font-size: 42px;
   }
