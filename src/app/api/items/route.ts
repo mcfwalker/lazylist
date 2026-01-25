@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
+import { sanitizeSearchInput } from '@/lib/security'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -31,8 +32,9 @@ export async function GET(request: NextRequest) {
   }
 
   if (search) {
-    // Full text search on title, summary, and transcript
-    query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`)
+    // Sanitize input to prevent SQL injection in PostgREST filters
+    const sanitized = sanitizeSearchInput(search)
+    query = query.or(`title.ilike.%${sanitized}%,summary.ilike.%${sanitized}%`)
   }
 
   const { data, error, count } = await query

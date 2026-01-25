@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { detectSourceType } from '@/lib/processors/detect'
 import { processItem } from '@/lib/processors'
+import { secureCompare } from '@/lib/security'
 
-// Validate auth token
+// Validate auth token with timing-safe comparison
 function isAuthorized(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
   if (!authHeader?.startsWith('Bearer ')) return false
 
   const token = authHeader.slice(7)
-  return token === process.env.API_SECRET_KEY
+  const apiKey = process.env.API_SECRET_KEY || ''
+
+  return secureCompare(token, apiKey)
 }
 
 export async function POST(request: NextRequest) {
