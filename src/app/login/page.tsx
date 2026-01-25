@@ -109,7 +109,6 @@ export default function LoginPage() {
           alt=""
           className={styles.bgImage}
         />
-
         <div className={styles.content}>
           <FloatingTitle />
           <Suspense fallback={<div className={styles.form} />}>
