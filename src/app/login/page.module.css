@@ -46,24 +46,29 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  gap: 24px;
+  gap: 16px;
   padding: 20px;
+  padding-right: 15%;
 }
 
 .floatingTitle {
   display: flex;
   justify-content: center;
   font-family: 'Mamoth', sans-serif;
-  font-size: 64px;
+  font-size: 36px;
   color: #000000;
   user-select: none;
 }
 
 @media (max-width: 600px) {
   .floatingTitle {
-    font-size: 42px;
+    font-size: 28px;
+  }
+
+  .content {
+    padding-right: 10%;
   }
 }
 
