@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Item } from '@/lib/supabase'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import styles from './page.module.css'
 
 const DOMAINS = ['all', 'vibe-coding', 'ai-filmmaking', 'other']
@@ -89,6 +90,7 @@ export default function Home() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <ThemeToggle />
         <button onClick={handleLogout} className={styles.logout}>
           logout
         </button>
