@@ -81,22 +81,18 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
 
   try {
     // Step 1: Get direct video URL from TikTok
-    console.log('Getting TikTok video URL...')
     const videoUrl = await getTikTokVideoUrl(url)
     if (!videoUrl) {
       console.error('Could not get TikTok video URL')
       return null
     }
-    console.log('Got video URL:', videoUrl.substring(0, 100) + '...')
 
     // Step 2: Transcribe with OpenAI
-    console.log('Transcribing with OpenAI...')
     const transcript = await transcribeWithOpenAI(videoUrl, apiKey)
     if (!transcript) {
       console.error('Transcription failed')
       return null
     }
-    console.log('Got transcript:', transcript.substring(0, 100) + '...')
 
     // Step 3: Extract GitHub URLs from transcript
     const githubUrlPattern = /github\.com\/[^\s"'<>,.]+/gi

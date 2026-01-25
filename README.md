@@ -13,7 +13,7 @@ Personal knowledge capture system. Share links from your phone, auto-extract int
 
 - **Frontend/API:** Next.js 15
 - **Database:** Supabase (Postgres)
-- **AI:** Gemini 2.0 Flash (classification), ElevenLabs (transcription)
+- **AI:** OpenAI GPT-4o Mini (transcription, classification)
 - **Hosting:** Vercel
 
 ## Setup
@@ -36,11 +36,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
 SUPABASE_SERVICE_ROLE_KEY=xxx
 
-# ElevenLabs (from elevenlabs.io dashboard)
-ELEVENLABS_API_KEY=xxx
-
-# Gemini (from aistudio.google.com)
-GEMINI_API_KEY=xxx
+# OpenAI (from platform.openai.com)
+OPENAI_API_KEY=xxx
 
 # GitHub (optional, for higher rate limits)
 GITHUB_TOKEN=xxx

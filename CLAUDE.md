@@ -12,7 +12,7 @@ Personal knowledge capture system. Share links from phone → auto-extract intel
 
 - **Frontend/API:** Next.js on Vercel
 - **Database:** Supabase (Postgres)
-- **AI:** Gemini 2.0 Flash (analysis), ElevenLabs (transcription)
+- **AI:** OpenAI GPT-4o Mini (transcription, classification)
 
 ## Design Docs
 
