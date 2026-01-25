@@ -1,0 +1,87 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createServerClient } from '@/lib/supabase'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = createServerClient()
+
+  const { data, error } = await supabase
+    .from('items')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error || !data) {
+    return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+  }
+
+  return NextResponse.json(data)
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+
+  try {
+    const body = await request.json()
+
+    // Only allow updating certain fields
+    const allowedFields = ['domain', 'content_type', 'tags', 'title', 'summary']
+    const updates: Record<string, unknown> = {}
+
+    for (const field of allowedFields) {
+      if (field in body) {
+        updates[field] = body[field]
+      }
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
+    }
+
+    const supabase = createServerClient()
+
+    const { data, error } = await supabase
+      .from('items')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Update error:', error)
+      return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+
+  } catch (error) {
+    console.error('PATCH error:', error)
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+  const supabase = createServerClient()
+
+  const { error } = await supabase
+    .from('items')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Delete error:', error)
+    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
+}
