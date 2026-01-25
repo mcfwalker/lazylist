@@ -11,14 +11,14 @@
 .container {
   position: relative;
   width: 100%;
-  max-width: 800px;
+  max-width: 500px;
   max-height: 600px;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 5 / 6;
   border-radius: 12px;
   overflow: hidden;
 }
 
-@media (max-width: 840px) {
+@media (max-width: 540px) {
   .container {
     max-width: calc(100vw - 40px);
     max-height: calc(100vh - 40px);
