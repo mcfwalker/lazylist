@@ -57,14 +57,14 @@
   display: flex;
   justify-content: center;
   font-family: 'Mamoth', sans-serif;
-  font-size: 36px;
+  font-size: 52px;
   color: #000000;
   user-select: none;
 }
 
 @media (max-width: 600px) {
   .floatingTitle {
-    font-size: 28px;
+    font-size: 36px;
   }
 
   .content {
