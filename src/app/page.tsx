@@ -20,6 +20,8 @@ export default function Home() {
   const [contentType, setContentType] = useState('all')
   const [status, setStatus] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
 
   const handleLogout = async () => {
     await fetch('/api/auth', { method: 'DELETE' })
@@ -64,6 +66,37 @@ export default function Home() {
     } catch (err) {
       console.error('Update error:', err)
     }
+  }
+
+  const deleteItem = async (id: string) => {
+    if (!confirm('Delete this item?')) return
+    try {
+      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setItems((prev) => prev.filter((item) => item.id !== id))
+        setTotal((prev) => prev - 1)
+        setExpandedId(null)
+      }
+    } catch (err) {
+      console.error('Delete error:', err)
+    }
+  }
+
+  const startEditing = (item: Item) => {
+    setEditingId(item.id)
+    setEditTitle(item.title || '')
+  }
+
+  const saveTitle = async (id: string) => {
+    if (editTitle.trim()) {
+      await updateItem(id, { title: editTitle.trim() })
+    }
+    setEditingId(null)
+  }
+
+  const cancelEditing = () => {
+    setEditingId(null)
+    setEditTitle('')
   }
 
   const formatDate = (dateStr: string) => {
@@ -137,7 +170,35 @@ export default function Home() {
             >
               <div className={styles.cardHeader}>
                 <div className={styles.cardTitle}>
-                  <span className={styles.name}>{item.title || 'Processing...'}</span>
+                  {editingId === item.id ? (
+                    <input
+                      type="text"
+                      className={styles.editInput}
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveTitle(item.id)
+                        if (e.key === 'Escape') cancelEditing()
+                      }}
+                      onBlur={() => saveTitle(item.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                    />
+                  ) : (
+                    <span className={styles.name}>
+                      {item.title || 'Processing...'}
+                      <button
+                        className={styles.editBtn}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          startEditing(item)
+                        }}
+                        title="Edit title"
+                      >
+                        ✎
+                      </button>
+                    </span>
+                  )}
                   <select
                     className={styles.domainSelect}
                     value={item.domain || 'other'}
@@ -217,6 +278,17 @@ export default function Home() {
                       <span className={styles.error}>{item.error_message}</span>
                     </div>
                   )}
+                  <div className={styles.cardActions}>
+                    <button
+                      className={styles.deleteBtn}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteItem(item.id)
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
