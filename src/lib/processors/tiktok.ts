@@ -5,6 +5,15 @@ interface TikTokResult {
   extractedUrls: string[]
 }
 
+interface GitHubRepoInfo {
+  url: string
+  name: string
+  fullName: string
+  description: string | null
+  stars: number
+  topics: string[]
+}
+
 // Get direct video URL from TikTok using tikwm API
 async function getTikTokVideoUrl(tiktokUrl: string): Promise<string | null> {
   try {
@@ -72,8 +81,8 @@ async function transcribeWithOpenAI(
   }
 }
 
-// Extract repo names from transcript using AI
-async function extractRepoNames(
+// Extract tool/project names that might be GitHub repos
+async function extractCandidateNames(
   transcript: string,
   apiKey: string
 ): Promise<string[]> {
@@ -88,13 +97,13 @@ async function extractRepoNames(
         model: 'gpt-4o-mini',
         messages: [{
           role: 'user',
-          content: `Extract GitHub repository names ONLY if they are explicitly mentioned as GitHub repos in this transcript.
+          content: `Extract names of software tools, libraries, CLI tools, or projects mentioned in this transcript that could potentially be open source GitHub repositories.
 
 Rules:
-- Only include repos mentioned with "github", "repo", "repository", or in "owner/repo" format
-- Do NOT include general tool names, apps, or services (e.g., "Nanobanana" is a service, not a repo)
-- Do NOT guess - if unsure, don't include it
-- Return ONLY a JSON array of repo names (e.g., ["owner/repo-name"]). If no repos are explicitly mentioned, return [].
+- Include specific tool/project names (e.g., "repeater", "sharp", "ffmpeg")
+- Do NOT include well-known commercial services (e.g., "ChatGPT", "Figma", "Notion")
+- Do NOT include generic terms (e.g., "terminal", "algorithm", "app")
+- Return ONLY a JSON array of names. If none found, return [].
 
 Transcript:
 ${transcript.slice(0, 2000)}`
@@ -114,13 +123,13 @@ ${transcript.slice(0, 2000)}`
     const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
     return JSON.parse(jsonStr)
   } catch (error) {
-    console.error('Repo name extraction error:', error)
+    console.error('Candidate name extraction error:', error)
     return []
   }
 }
 
-// Search GitHub for a repo by name
-async function searchGitHubRepo(repoName: string): Promise<string | null> {
+// Search GitHub for a repo and return full metadata
+async function searchGitHubRepoWithMetadata(query: string): Promise<GitHubRepoInfo | null> {
   try {
     const token = process.env.GITHUB_TOKEN
     const headers: Record<string, string> = {
@@ -132,7 +141,7 @@ async function searchGitHubRepo(repoName: string): Promise<string | null> {
     }
 
     const response = await fetch(
-      `https://api.github.com/search/repositories?q=${encodeURIComponent(repoName)}&per_page=1`,
+      `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=1`,
       { headers }
     )
 
@@ -143,12 +152,77 @@ async function searchGitHubRepo(repoName: string): Promise<string | null> {
 
     const data = await response.json()
     if (data.items && data.items.length > 0) {
-      return data.items[0].html_url
+      const repo = data.items[0]
+      return {
+        url: repo.html_url,
+        name: repo.name,
+        fullName: repo.full_name,
+        description: repo.description,
+        stars: repo.stargazers_count,
+        topics: repo.topics || [],
+      }
     }
     return null
   } catch (error) {
     console.error('GitHub search error:', error)
     return null
+  }
+}
+
+// Validate if a GitHub repo matches what's described in the transcript
+async function validateRepoMatch(
+  transcript: string,
+  candidateName: string,
+  repo: GitHubRepoInfo,
+  apiKey: string
+): Promise<boolean> {
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{
+          role: 'user',
+          content: `Determine if this GitHub repository is the one being discussed in the transcript.
+
+Transcript excerpt (discussing "${candidateName}"):
+${transcript.slice(0, 1500)}
+
+GitHub Repository:
+- Name: ${repo.fullName}
+- Description: ${repo.description || 'No description'}
+- Topics: ${repo.topics.join(', ') || 'None'}
+- Stars: ${repo.stars}
+
+Question: Is this GitHub repository "${repo.fullName}" the actual project/tool being discussed in the transcript as "${candidateName}"?
+
+Consider:
+- Does the repo description match what the transcript describes?
+- Is the repo name similar to what's mentioned?
+- Does the functionality align?
+
+Respond with ONLY "yes" or "no".`
+        }],
+        temperature: 0,
+        max_tokens: 10,
+      }),
+    })
+
+    if (!response.ok) {
+      console.error('Validation error:', response.status)
+      return false
+    }
+
+    const data = await response.json()
+    const answer = data.choices?.[0]?.message?.content?.trim().toLowerCase() || ''
+    return answer === 'yes'
+  } catch (error) {
+    console.error('Repo validation error:', error)
+    return false
   }
 }
 
@@ -174,28 +248,32 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
       return null
     }
 
-    // Step 3: Extract GitHub URLs from transcript (explicit URLs)
+    // Step 3: Extract explicit GitHub URLs from transcript
     const githubUrlPattern = /github\.com\/[^\s"'<>,.]+/gi
     const urlMatches = transcript.match(githubUrlPattern) || []
     const explicitUrls = [...new Set(urlMatches.map((m: string) =>
       `https://${m.replace(/[.,;:!?)]+$/, '')}` // Clean trailing punctuation
     ))]
 
-    // Step 4: If no explicit URLs, try AI extraction of repo names
+    // Step 4: If no explicit URLs, extract and validate candidate repos
     let extractedUrls = explicitUrls
     if (explicitUrls.length === 0) {
-      const repoNames = await extractRepoNames(transcript, apiKey)
-      const searchedUrls: string[] = []
+      const candidateNames = await extractCandidateNames(transcript, apiKey)
+      const validatedUrls: string[] = []
 
-      // Search GitHub for each repo name (limit to 3)
-      for (const name of repoNames.slice(0, 3)) {
-        const repoUrl = await searchGitHubRepo(name)
-        if (repoUrl) {
-          searchedUrls.push(repoUrl)
+      // Search and validate each candidate (limit to 3)
+      for (const name of candidateNames.slice(0, 3)) {
+        const repo = await searchGitHubRepoWithMetadata(name)
+        if (repo) {
+          // Validate that this repo matches the transcript context
+          const isMatch = await validateRepoMatch(transcript, name, repo, apiKey)
+          if (isMatch) {
+            validatedUrls.push(repo.url)
+          }
         }
       }
 
-      extractedUrls = searchedUrls
+      extractedUrls = validatedUrls
     }
 
     return {
