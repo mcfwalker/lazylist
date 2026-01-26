@@ -72,6 +72,80 @@ async function transcribeWithOpenAI(
   }
 }
 
+// Extract repo names from transcript using AI
+async function extractRepoNames(
+  transcript: string,
+  apiKey: string
+): Promise<string[]> {
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{
+          role: 'user',
+          content: `Extract any GitHub repository names mentioned in this transcript. Return ONLY a JSON array of repo names (e.g., ["repo-name", "another-repo"]). If no repos are mentioned, return [].
+
+Transcript:
+${transcript.slice(0, 2000)}`
+        }],
+        temperature: 0,
+        max_tokens: 200,
+      }),
+    })
+
+    if (!response.ok) {
+      console.error('AI extraction error:', response.status)
+      return []
+    }
+
+    const data = await response.json()
+    const text = data.choices?.[0]?.message?.content?.trim() || '[]'
+    const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
+    return JSON.parse(jsonStr)
+  } catch (error) {
+    console.error('Repo name extraction error:', error)
+    return []
+  }
+}
+
+// Search GitHub for a repo by name
+async function searchGitHubRepo(repoName: string): Promise<string | null> {
+  try {
+    const token = process.env.GITHUB_TOKEN
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'LazyList',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const response = await fetch(
+      `https://api.github.com/search/repositories?q=${encodeURIComponent(repoName)}&per_page=1`,
+      { headers }
+    )
+
+    if (!response.ok) {
+      console.error('GitHub search error:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    if (data.items && data.items.length > 0) {
+      return data.items[0].html_url
+    }
+    return null
+  } catch (error) {
+    console.error('GitHub search error:', error)
+    return null
+  }
+}
+
 export async function processTikTok(url: string): Promise<TikTokResult | null> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
@@ -94,12 +168,29 @@ export async function processTikTok(url: string): Promise<TikTokResult | null> {
       return null
     }
 
-    // Step 3: Extract GitHub URLs from transcript
+    // Step 3: Extract GitHub URLs from transcript (explicit URLs)
     const githubUrlPattern = /github\.com\/[^\s"'<>,.]+/gi
-    const matches = transcript.match(githubUrlPattern) || []
-    const extractedUrls = [...new Set(matches.map((m: string) =>
+    const urlMatches = transcript.match(githubUrlPattern) || []
+    const explicitUrls = [...new Set(urlMatches.map((m: string) =>
       `https://${m.replace(/[.,;:!?)]+$/, '')}` // Clean trailing punctuation
     ))]
+
+    // Step 4: If no explicit URLs, try AI extraction of repo names
+    let extractedUrls = explicitUrls
+    if (explicitUrls.length === 0) {
+      const repoNames = await extractRepoNames(transcript, apiKey)
+      const searchedUrls: string[] = []
+
+      // Search GitHub for each repo name (limit to 3)
+      for (const name of repoNames.slice(0, 3)) {
+        const repoUrl = await searchGitHubRepo(name)
+        if (repoUrl) {
+          searchedUrls.push(repoUrl)
+        }
+      }
+
+      extractedUrls = searchedUrls
+    }
 
     return {
       transcript,
