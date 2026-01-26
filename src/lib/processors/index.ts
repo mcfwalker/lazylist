@@ -66,15 +66,30 @@ export async function processItem(itemId: string): Promise<void> {
       // Use tweet text as transcript for classification
       transcript = xData.text
 
-      // Check for GitHub URLs in the tweet
+      // Check resolved URLs for GitHub repos (t.co links resolved)
+      for (const resolvedUrl of xData.resolvedUrls) {
+        if (resolvedUrl.includes('github.com')) {
+          const gh = await processGitHub(resolvedUrl)
+          if (gh) {
+            extractedEntities.repos?.push(resolvedUrl)
+            if (!githubMetadata) {
+              githubMetadata = gh
+            }
+          }
+        }
+      }
+
+      // Also check for GitHub URLs directly in the text (in case not using t.co)
       const githubUrls = xData.text.match(/github\.com\/[^\s)]+/g) || []
       for (const ghUrl of githubUrls.slice(0, 3)) {
         const fullUrl = ghUrl.startsWith('http') ? ghUrl : `https://${ghUrl}`
-        const gh = await processGitHub(fullUrl)
-        if (gh) {
-          extractedEntities.repos?.push(fullUrl)
-          if (!githubMetadata) {
-            githubMetadata = gh
+        if (!extractedEntities.repos?.includes(fullUrl)) {
+          const gh = await processGitHub(fullUrl)
+          if (gh) {
+            extractedEntities.repos?.push(fullUrl)
+            if (!githubMetadata) {
+              githubMetadata = gh
+            }
           }
         }
       }
