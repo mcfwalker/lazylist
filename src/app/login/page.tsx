@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import styles from './page.module.css'
 
-const TITLE = "dont login"
+const TITLE = "dont log in"
 
 function FloatingLetter({
   letter,
