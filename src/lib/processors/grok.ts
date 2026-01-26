@@ -69,13 +69,26 @@ Format your response as JSON:
     const data = await response.json()
     console.log('Grok API raw response:', JSON.stringify(data, null, 2))
 
-    // Extract the response content - try multiple paths
-    const content = data.output?.[0]?.content
-      || data.output?.content
-      || data.choices?.[0]?.message?.content
-      || data.content
-      || ''
-    const citations = data.citations || data.output?.citations || []
+    // Find the assistant message in the output array
+    // Output contains tool calls followed by the final message
+    const outputArray = data.output || []
+    const assistantMessage = outputArray.find(
+      (item: { type?: string; role?: string }) => item.type === 'message' && item.role === 'assistant'
+    )
+
+    // Extract text from the message content array
+    const contentArray = assistantMessage?.content || []
+    const textContent = contentArray.find(
+      (item: { type?: string }) => item.type === 'output_text'
+    )
+    const content = textContent?.text || ''
+
+    // Extract citations from annotations
+    const annotations = textContent?.annotations || []
+    const citations = annotations
+      .filter((a: { type?: string }) => a.type === 'url_citation')
+      .map((a: { url?: string }) => a.url)
+      .filter(Boolean)
 
     console.log('Grok extracted content:', content?.slice(0, 500))
     console.log('Grok citations:', citations)
@@ -168,8 +181,25 @@ Format your response as JSON:
 
     const data = await response.json()
 
-    const content = data.output?.[0]?.content || data.choices?.[0]?.message?.content || ''
-    const citations = data.citations || []
+    // Find the assistant message in the output array
+    const outputArray = data.output || []
+    const assistantMessage = outputArray.find(
+      (item: { type?: string; role?: string }) => item.type === 'message' && item.role === 'assistant'
+    )
+
+    // Extract text from the message content array
+    const contentArray = assistantMessage?.content || []
+    const textContent = contentArray.find(
+      (item: { type?: string }) => item.type === 'output_text'
+    )
+    const content = textContent?.text || ''
+
+    // Extract citations from annotations
+    const annotations = textContent?.annotations || []
+    const citations = annotations
+      .filter((a: { type?: string }) => a.type === 'url_citation')
+      .map((a: { url?: string }) => a.url)
+      .filter(Boolean)
 
     return {
       content,
