@@ -174,6 +174,25 @@ export default function Home() {
                       {item.source_url}
                     </a>
                   </div>
+                  {item.extracted_entities?.repos && item.extracted_entities.repos.length > 0 && (
+                    <div className={styles.detailRow}>
+                      <strong>GitHub Repos:</strong>
+                      <div className={styles.repoList}>
+                        {item.extracted_entities.repos.map((repo) => (
+                          <a
+                            key={repo}
+                            href={repo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={styles.repoLink}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {repo.replace('https://github.com/', '')}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {item.tags && item.tags.length > 0 && (
                     <div className={styles.detailRow}>
                       <strong>Tags:</strong>

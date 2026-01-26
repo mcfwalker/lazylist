@@ -262,6 +262,25 @@
   word-break: break-all;
 }
 
+.repoList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.repoLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+.repoLink::before {
+  content: '↗';
+  font-size: 11px;
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;
