@@ -4,6 +4,7 @@ import { createServerClient, Item } from '../supabase'
 import { detectSourceType, parseGitHubUrl } from './detect'
 import { processGitHub } from './github'
 import { processTikTok } from './tiktok'
+import { processX } from './x'
 import { classify } from './classifier'
 
 export async function processItem(itemId: string): Promise<void> {
@@ -56,6 +57,26 @@ export async function processItem(itemId: string): Promise<void> {
       githubMetadata = await processGitHub(item.source_url)
       if (!githubMetadata) {
         throw new Error('GitHub metadata fetch failed')
+      }
+    } else if (sourceType === 'x') {
+      const xData = await processX(item.source_url)
+      if (!xData) {
+        throw new Error('X/Twitter fetch failed')
+      }
+      // Use tweet text as transcript for classification
+      transcript = xData.text
+
+      // Check for GitHub URLs in the tweet
+      const githubUrls = xData.text.match(/github\.com\/[^\s)]+/g) || []
+      for (const ghUrl of githubUrls.slice(0, 3)) {
+        const fullUrl = ghUrl.startsWith('http') ? ghUrl : `https://${ghUrl}`
+        const gh = await processGitHub(fullUrl)
+        if (gh) {
+          extractedEntities.repos?.push(fullUrl)
+          if (!githubMetadata) {
+            githubMetadata = gh
+          }
+        }
       }
     }
     // TODO: Add article processor

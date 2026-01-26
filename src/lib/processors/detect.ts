@@ -1,6 +1,6 @@
 // Detect source type from URL
 
-export type SourceType = 'tiktok' | 'github' | 'youtube' | 'article'
+export type SourceType = 'tiktok' | 'github' | 'youtube' | 'x' | 'article'
 
 export function detectSourceType(url: string): SourceType {
   const hostname = new URL(url).hostname.toLowerCase()
@@ -15,6 +15,10 @@ export function detectSourceType(url: string): SourceType {
 
   if (hostname.includes('youtube.com') || hostname === 'youtu.be') {
     return 'youtube'
+  }
+
+  if (hostname === 'x.com' || hostname === 'twitter.com') {
+    return 'x'
   }
 
   return 'article'
