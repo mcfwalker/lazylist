@@ -108,11 +108,18 @@ Format your response as JSON:
     }
 
     if (parsed) {
+      // Convert repo names (e.g., "owner/repo") to full GitHub URLs
+      const repoUrls = (parsed.mentionedRepos || []).map((repo: string) => {
+        if (repo.includes('github.com')) return repo
+        if (repo.includes('/')) return `https://github.com/${repo}`
+        return repo // Single name, can't convert
+      })
+
       return {
         text: parsed.fullText || content,
         authorName: parsed.authorName || null,
         summary: parsed.summary || '',
-        citations: [...citations, ...(parsed.mentionedRepos || [])],
+        citations: [...citations, ...repoUrls],
       }
     }
 
