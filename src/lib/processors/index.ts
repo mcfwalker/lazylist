@@ -5,6 +5,7 @@ import { detectSourceType, parseGitHubUrl } from './detect'
 import { processGitHub } from './github'
 import { processTikTok } from './tiktok'
 import { processX } from './x'
+import { extractReposFromTranscript } from './repo-extractor'
 import { classify } from './classifier'
 
 export async function processItem(itemId: string): Promise<void> {
@@ -134,6 +135,21 @@ export async function processItem(itemId: string): Promise<void> {
               if (!githubMetadata) {
                 githubMetadata = gh
               }
+            }
+          }
+        }
+      }
+
+      // Smart extraction pass: catch repos mentioned in transcript that weren't explicitly linked
+      if (transcript && extractedEntities.repos?.length === 0) {
+        console.log('No repos found via Grok/oembed, running smart extraction...')
+        const smartRepos = await extractReposFromTranscript(transcript, [])
+        for (const repo of smartRepos.slice(0, 3)) {
+          const gh = await processGitHub(repo.url)
+          if (gh) {
+            extractedEntities.repos?.push(repo.url)
+            if (!githubMetadata) {
+              githubMetadata = gh
             }
           }
         }
