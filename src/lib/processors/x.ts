@@ -1,19 +1,24 @@
-// X/Twitter processor using oembed API (no auth required)
+// X/Twitter processor - uses Grok API for full content, falls back to oembed
+
+import { fetchXContentWithGrok } from './grok'
 
 interface XMetadata {
   text: string
   authorName: string
   authorUrl: string
   resolvedUrls: string[]
-  isLinkOnly: boolean      // Tweet text is just a URL with no commentary
-  xArticleUrl: string | null  // If resolved URL is an X Article (requires login)
+  isLinkOnly: boolean
+  xArticleUrl: string | null
+  // Grok-enhanced fields
+  summary: string | null
+  grokCitations: string[]
+  usedGrok: boolean
 }
 
-export async function processX(url: string): Promise<XMetadata | null> {
+// Fallback: oembed API (limited but no auth required)
+async function processXWithOembed(url: string): Promise<XMetadata | null> {
   try {
-    // Normalize twitter.com to x.com
     const normalizedUrl = url.replace('twitter.com', 'x.com')
-
     const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(normalizedUrl)}&omit_script=true`
 
     const response = await fetch(oembedUrl)
@@ -33,11 +38,8 @@ export async function processX(url: string): Promise<XMetadata | null> {
     let text = ''
     if (pMatch) {
       text = pMatch[1]
-        // Replace <br> with newlines
         .replace(/<br\s*\/?>/gi, '\n')
-        // Strip all HTML tags but keep their text content
         .replace(/<[^>]+>/g, '')
-        // Decode HTML entities
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
@@ -47,13 +49,12 @@ export async function processX(url: string): Promise<XMetadata | null> {
         .trim()
     }
 
-    // Extract t.co URLs from the HTML and resolve them
+    // Extract and resolve t.co URLs
     const tcoUrls = htmlText.match(/https:\/\/t\.co\/[a-zA-Z0-9]+/g) || []
     const resolvedUrls: string[] = []
 
     for (const tcoUrl of tcoUrls.slice(0, 5)) {
       try {
-        // Follow redirect to get real URL
         const res = await fetch(tcoUrl, { redirect: 'manual' })
         const location = res.headers.get('location')
         if (location && !location.includes('t.co')) {
@@ -64,12 +65,9 @@ export async function processX(url: string): Promise<XMetadata | null> {
       }
     }
 
-    // Check if tweet is link-only (just URLs, no real commentary)
     const textWithoutUrls = text.replace(/https?:\/\/\S+/g, '').trim()
-    const isLinkOnly = textWithoutUrls.length < 10 // Less than 10 chars of actual text
-
-    // Check if any resolved URL is an X Article (requires login)
-    const xArticleUrl = resolvedUrls.find(url => url.includes('x.com/i/article/')) || null
+    const isLinkOnly = textWithoutUrls.length < 10
+    const xArticleUrl = resolvedUrls.find(u => u.includes('x.com/i/article/')) || null
 
     return {
       text,
@@ -78,9 +76,51 @@ export async function processX(url: string): Promise<XMetadata | null> {
       resolvedUrls,
       isLinkOnly,
       xArticleUrl,
+      summary: null,
+      grokCitations: [],
+      usedGrok: false,
     }
   } catch (error) {
-    console.error('X processing error:', error)
+    console.error('X oembed error:', error)
     return null
   }
+}
+
+// Primary: Use Grok API for full content access
+async function processXWithGrok(url: string): Promise<XMetadata | null> {
+  const grokResult = await fetchXContentWithGrok(url)
+
+  if (!grokResult) {
+    return null
+  }
+
+  // Extract GitHub URLs from citations
+  const githubUrls = grokResult.citations.filter(c => c.includes('github.com'))
+
+  return {
+    text: grokResult.text,
+    authorName: grokResult.authorName || 'Unknown',
+    authorUrl: '',
+    resolvedUrls: githubUrls,
+    isLinkOnly: false,
+    xArticleUrl: null, // Grok can access X Articles directly
+    summary: grokResult.summary,
+    grokCitations: grokResult.citations,
+    usedGrok: true,
+  }
+}
+
+export async function processX(url: string): Promise<XMetadata | null> {
+  // Try Grok first (if API key is configured)
+  if (process.env.XAI_API_KEY) {
+    console.log('Processing X content with Grok API...')
+    const grokResult = await processXWithGrok(url)
+    if (grokResult) {
+      return grokResult
+    }
+    console.log('Grok API failed, falling back to oembed...')
+  }
+
+  // Fallback to oembed
+  return processXWithOembed(url)
 }
