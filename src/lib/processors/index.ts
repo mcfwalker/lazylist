@@ -63,8 +63,12 @@ export async function processItem(itemId: string): Promise<void> {
       if (!xData) {
         throw new Error('X/Twitter fetch failed')
       }
-      // Use tweet text as transcript for classification
-      transcript = xData.text
+      // Use tweet text + video transcript for classification
+      if (xData.videoTranscript) {
+        transcript = `[Post]: ${xData.text}\n\n[Video Transcript]: ${xData.videoTranscript}`
+      } else {
+        transcript = xData.text
+      }
 
       // If Grok was used, we have full content access (including X Articles)
       if (xData.usedGrok) {

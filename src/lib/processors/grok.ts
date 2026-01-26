@@ -7,6 +7,7 @@ interface GrokResponse {
 
 interface GrokXContent {
   text: string
+  videoTranscript: string | null
   authorName: string | null
   summary: string
   citations: string[]
@@ -36,13 +37,15 @@ export async function fetchXContentWithGrok(url: string): Promise<GrokXContent |
 
 Please provide:
 1. The full text content of the post/thread/article
-2. The author's name/handle
-3. A concise summary (2-3 sentences) of the key points
-4. Any GitHub repositories or tools mentioned
+2. If there is a video, provide a COMPLETE TRANSCRIPTION of all spoken audio
+3. The author's name/handle
+4. A concise summary (2-3 sentences) of the key points
+5. Any GitHub repositories or tools mentioned
 
 Format your response as JSON:
 {
-  "fullText": "the complete text content",
+  "fullText": "the complete text content of the post",
+  "videoTranscript": "full transcription of video audio, or null if no video",
   "authorName": "author name or handle",
   "summary": "concise summary",
   "mentionedRepos": ["repo1", "repo2"],
@@ -117,6 +120,7 @@ Format your response as JSON:
 
       return {
         text: parsed.fullText || content,
+        videoTranscript: parsed.videoTranscript || null,
         authorName: parsed.authorName || null,
         summary: parsed.summary || '',
         citations: [...citations, ...repoUrls],
@@ -125,6 +129,7 @@ Format your response as JSON:
 
     return {
       text: content,
+      videoTranscript: null,
       authorName: null,
       summary: content.slice(0, 200),
       citations,

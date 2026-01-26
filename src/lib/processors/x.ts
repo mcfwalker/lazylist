@@ -4,6 +4,7 @@ import { fetchXContentWithGrok } from './grok'
 
 interface XMetadata {
   text: string
+  videoTranscript: string | null
   authorName: string
   authorUrl: string
   resolvedUrls: string[]
@@ -71,6 +72,7 @@ async function processXWithOembed(url: string): Promise<XMetadata | null> {
 
     return {
       text,
+      videoTranscript: null,
       authorName: data.author_name,
       authorUrl: data.author_url,
       resolvedUrls,
@@ -99,6 +101,7 @@ async function processXWithGrok(url: string): Promise<XMetadata | null> {
 
   return {
     text: grokResult.text,
+    videoTranscript: grokResult.videoTranscript,
     authorName: grokResult.authorName || 'Unknown',
     authorUrl: '',
     resolvedUrls: githubUrls,
