@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 import { detectSourceType } from '@/lib/processors/detect'
 import { processItem } from '@/lib/processors'
@@ -90,13 +90,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to capture' }, { status: 500 })
     }
 
-    // Fire-and-forget: process in background, return immediately
-    // This allows the iOS Shortcut / desktop app to return instantly
-    processItem(item.id).catch(err => {
-      console.error('Background processing error:', err)
+    // Schedule processing to run after response is sent
+    // Using after() keeps the function alive until processing completes
+    after(async () => {
+      try {
+        await processItem(item.id)
+      } catch (err) {
+        console.error('Background processing error:', err)
+      }
     })
 
-    // Return immediately - item is captured, processing happens async
+    // Return immediately - item is captured, processing runs after response
     return NextResponse.json({
       id: item.id,
       status: 'processing',

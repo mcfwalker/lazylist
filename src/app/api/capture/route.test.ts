@@ -2,7 +2,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { NextRequest } from 'next/server'
 import { POST } from './route'
 
+// Capture callbacks passed to after()
+let afterCallbacks: Array<() => Promise<void>> = []
+
 // Mock dependencies
+vi.mock('next/server', async () => {
+  const actual = await vi.importActual('next/server')
+  return {
+    ...actual,
+    after: vi.fn((callback: () => Promise<void>) => {
+      afterCallbacks.push(callback)
+    }),
+  }
+})
+
 vi.mock('@/lib/supabase', () => ({
   createServerClient: vi.fn(),
 }))
@@ -45,6 +58,7 @@ describe('capture API route', () => {
 
   beforeEach(() => {
     process.env = { ...originalEnv, API_SECRET_KEY: 'test-secret-key' }
+    afterCallbacks = []
 
     // Create chainable mock for Supabase
     mockSupabase = {
@@ -259,7 +273,7 @@ describe('capture API route', () => {
       })
     })
 
-    it('triggers background processing', async () => {
+    it('schedules background processing via after()', async () => {
       const request = createMockRequest(
         { url: 'https://example.com/article' },
         'Bearer test-secret-key'
@@ -267,10 +281,16 @@ describe('capture API route', () => {
 
       await POST(request)
 
+      // Verify after() was called with a callback
+      expect(afterCallbacks).toHaveLength(1)
+
+      // Execute the callback to trigger processing
+      await afterCallbacks[0]()
+
       expect(processItem).toHaveBeenCalledWith('new-item-id')
     })
 
-    it('does not wait for processing to complete', async () => {
+    it('does not wait for processing to complete (after() is non-blocking)', async () => {
       // Make processItem take a long time
       vi.mocked(processItem).mockImplementation(
         () => new Promise(resolve => setTimeout(resolve, 10000))
@@ -285,8 +305,11 @@ describe('capture API route', () => {
       await POST(request)
       const elapsed = Date.now() - start
 
-      // Should return immediately (well under 10 seconds)
+      // Response should return immediately - after() schedules work but doesn't block
       expect(elapsed).toBeLessThan(1000)
+
+      // Callback was scheduled but not yet executed
+      expect(afterCallbacks).toHaveLength(1)
     })
   })
 
@@ -318,10 +341,12 @@ describe('capture API route', () => {
         'Bearer test-secret-key'
       )
 
-      // Should not throw - processing is fire-and-forget
+      // Response should succeed even if processing will fail
       const response = await POST(request)
-
       expect(response.status).toBe(200)
+
+      // Execute the after() callback - should not throw
+      await expect(afterCallbacks[0]()).resolves.not.toThrow()
     })
   })
 
