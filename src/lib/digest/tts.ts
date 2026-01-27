@@ -6,18 +6,20 @@ export type TTSVoice = 'alloy' | 'echo' | 'fable' | 'nova' | 'onyx' | 'shimmer'
 export interface TTSOptions {
   voice?: TTSVoice
   model?: 'tts-1' | 'tts-1-hd'
+  speed?: number // 0.25 to 4.0, default 1.0
 }
 
 const DEFAULT_OPTIONS: Required<TTSOptions> = {
   voice: 'alloy', // Neutral, balanced — selected for Imogen
   model: 'tts-1', // Standard quality, faster
+  speed: 1.15, // Slightly faster, more natural podcast pace
 }
 
 export async function textToSpeech(
   text: string,
   options: TTSOptions = {}
 ): Promise<Buffer> {
-  const { voice, model } = { ...DEFAULT_OPTIONS, ...options }
+  const { voice, model, speed } = { ...DEFAULT_OPTIONS, ...options }
 
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
@@ -30,6 +32,7 @@ export async function textToSpeech(
       voice,
       input: text,
       response_format: 'opus', // Telegram-native format
+      speed,
     }),
   })
 
