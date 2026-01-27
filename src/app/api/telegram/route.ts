@@ -13,7 +13,30 @@ interface TelegramUpdate {
   }
 }
 
+// Verify Telegram webhook secret token
+// https://core.telegram.org/bots/api#setwebhook
+function verifyTelegramSecret(request: NextRequest): boolean {
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET
+  if (!secret) {
+    // If no secret configured, allow requests (backward compatibility)
+    // Log warning in production
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('TELEGRAM_WEBHOOK_SECRET not configured - webhook is unprotected')
+    }
+    return true
+  }
+
+  const headerSecret = request.headers.get('x-telegram-bot-api-secret-token')
+  return headerSecret === secret
+}
+
 export async function POST(request: NextRequest) {
+  // Verify webhook secret before processing
+  if (!verifyTelegramSecret(request)) {
+    // Return 401 but don't reveal details
+    return NextResponse.json({ ok: false }, { status: 401 })
+  }
+
   try {
     const update: TelegramUpdate = await request.json()
 

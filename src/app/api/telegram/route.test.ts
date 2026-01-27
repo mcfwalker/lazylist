@@ -35,6 +35,7 @@ import { processItem } from '@/lib/processors'
 import { sendMessage, getUserByTelegramId, extractUrl } from '@/lib/telegram'
 
 const TEST_USER = { id: 'test-user-uuid', email: 'test@example.com', display_name: 'Test' }
+const TEST_WEBHOOK_SECRET = 'test-webhook-secret-123'
 
 // Helper to create mock telegram update
 function createTelegramUpdate(
@@ -48,6 +49,9 @@ function createTelegramUpdate(
 
   return new NextRequest('http://localhost/api/telegram', {
     method: 'POST',
+    headers: {
+      'x-telegram-bot-api-secret-token': TEST_WEBHOOK_SECRET,
+    },
     body: JSON.stringify(update),
   })
 }
@@ -65,6 +69,7 @@ describe('telegram webhook route', () => {
 
   beforeEach(() => {
     afterCallbacks = []
+    process.env.TELEGRAM_WEBHOOK_SECRET = TEST_WEBHOOK_SECRET
 
     mockSupabase = {
       from: vi.fn().mockReturnThis(),
@@ -99,13 +104,54 @@ describe('telegram webhook route', () => {
   })
 
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.clearAllMocks()
+    delete process.env.TELEGRAM_WEBHOOK_SECRET
+  })
+
+  describe('webhook security', () => {
+    it('rejects requests without valid secret token', async () => {
+      const request = new NextRequest('http://localhost/api/telegram', {
+        method: 'POST',
+        headers: {
+          'x-telegram-bot-api-secret-token': 'wrong-secret',
+        },
+        body: JSON.stringify({ message: { from: { id: 123 }, chat: { id: 123 }, text: 'test' } }),
+      })
+
+      const response = await POST(request)
+      expect(response.status).toBe(401)
+    })
+
+    it('rejects requests with missing secret token', async () => {
+      const request = new NextRequest('http://localhost/api/telegram', {
+        method: 'POST',
+        body: JSON.stringify({ message: { from: { id: 123 }, chat: { id: 123 }, text: 'test' } }),
+      })
+
+      const response = await POST(request)
+      expect(response.status).toBe(401)
+    })
+
+    it('allows requests when no secret is configured (backward compat)', async () => {
+      delete process.env.TELEGRAM_WEBHOOK_SECRET
+      vi.mocked(getUserByTelegramId).mockResolvedValue(TEST_USER)
+      vi.mocked(extractUrl).mockReturnValue(null)
+
+      const request = new NextRequest('http://localhost/api/telegram', {
+        method: 'POST',
+        body: JSON.stringify({ message: { from: { id: 123 }, chat: { id: 123 }, text: 'no url here' } }),
+      })
+
+      const response = await POST(request)
+      expect(response.status).toBe(200)
+    })
   })
 
   describe('message filtering', () => {
     it('ignores updates without text message', async () => {
       const request = new NextRequest('http://localhost/api/telegram', {
         method: 'POST',
+        headers: { 'x-telegram-bot-api-secret-token': TEST_WEBHOOK_SECRET },
         body: JSON.stringify({ message: { from: { id: 123 }, chat: { id: 123 } } }),
       })
 
@@ -119,6 +165,7 @@ describe('telegram webhook route', () => {
     it('ignores updates without message at all', async () => {
       const request = new NextRequest('http://localhost/api/telegram', {
         method: 'POST',
+        headers: { 'x-telegram-bot-api-secret-token': TEST_WEBHOOK_SECRET },
         body: JSON.stringify({ update_id: 123 }),
       })
 
