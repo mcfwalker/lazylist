@@ -5,6 +5,7 @@ import { detectSourceType, parseGitHubUrl } from './detect'
 import { processGitHub } from './github'
 import { processTikTok } from './tiktok'
 import { processX } from './x'
+import { processArticle } from './article'
 import { extractReposFromTranscript } from './repo-extractor'
 import { classify } from './classifier'
 
@@ -162,8 +163,27 @@ export async function processItem(itemId: string): Promise<void> {
           }
         }
       }
+    } else if (sourceType === 'article') {
+      const articleData = await processArticle(item.source_url)
+      if (articleData && articleData.content) {
+        // Use article content as transcript for classification
+        transcript = articleData.content
+        // Check for GitHub URLs in article content
+        const githubUrls = articleData.content.match(/github\.com\/[^\s)]+/g) || []
+        for (const ghUrl of githubUrls.slice(0, 3)) {
+          const fullUrl = ghUrl.startsWith('http') ? ghUrl : `https://${ghUrl}`
+          if (!extractedEntities.repos?.includes(fullUrl)) {
+            const gh = await processGitHub(fullUrl)
+            if (gh) {
+              extractedEntities.repos?.push(fullUrl)
+              if (!githubMetadata) {
+                githubMetadata = gh
+              }
+            }
+          }
+        }
+      }
     }
-    // TODO: Add article processor
 
     // Classify the content
     const classification = await classify({
