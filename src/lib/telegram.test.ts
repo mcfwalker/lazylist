@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { isAllowedUser, extractUrl, sendMessage } from './telegram'
+import { extractUrl, sendMessage } from './telegram'
 
 describe('telegram helpers', () => {
   const originalEnv = process.env
@@ -11,33 +11,6 @@ describe('telegram helpers', () => {
   afterEach(() => {
     process.env = originalEnv
     vi.restoreAllMocks()
-  })
-
-  describe('isAllowedUser', () => {
-    it('returns false when TELEGRAM_ALLOWED_USERS is not set', () => {
-      delete process.env.TELEGRAM_ALLOWED_USERS
-      expect(isAllowedUser(123456789)).toBe(false)
-    })
-
-    it('returns false when user is not in list', () => {
-      process.env.TELEGRAM_ALLOWED_USERS = '111111,222222'
-      expect(isAllowedUser(333333)).toBe(false)
-    })
-
-    it('returns true when user is in list', () => {
-      process.env.TELEGRAM_ALLOWED_USERS = '111111,222222,333333'
-      expect(isAllowedUser(222222)).toBe(true)
-    })
-
-    it('handles whitespace in user list', () => {
-      process.env.TELEGRAM_ALLOWED_USERS = '111111, 222222 , 333333'
-      expect(isAllowedUser(222222)).toBe(true)
-    })
-
-    it('handles single user in list', () => {
-      process.env.TELEGRAM_ALLOWED_USERS = '123456789'
-      expect(isAllowedUser(123456789)).toBe(true)
-    })
   })
 
   describe('extractUrl', () => {

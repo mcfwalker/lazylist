@@ -57,14 +57,6 @@ export async function sendMessage(
   }
 }
 
-// Legacy function - kept for backward compatibility during migration
-// TODO: Remove after multi-user migration complete
-export function isAllowedUser(userId: number): boolean {
-  const allowedUsers = process.env.TELEGRAM_ALLOWED_USERS || ''
-  const userIds = allowedUsers.split(',').map((id) => id.trim())
-  return userIds.includes(String(userId))
-}
-
 export function extractUrl(text: string): string | null {
   // Match URLs in the message text
   const urlPattern = /https?:\/\/[^\s]+/i
