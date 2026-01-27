@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 // Routes that don't require auth
-const PUBLIC_ROUTES = ['/login', '/api/capture', '/api/auth']
+const PUBLIC_ROUTES = ['/login', '/api/capture', '/api/auth', '/api/telegram']
 
 // Base64url encode/decode for Edge Runtime
 function base64urlDecode(str: string): string {
