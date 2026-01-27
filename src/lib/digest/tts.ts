@@ -1,25 +1,44 @@
 // Text-to-Speech integration using OpenAI TTS API
 // Converts digest scripts to audio for Telegram voice messages
 
-export type TTSVoice = 'alloy' | 'echo' | 'fable' | 'nova' | 'onyx' | 'shimmer'
+export type TTSVoice =
+  | 'alloy' | 'ash' | 'coral' | 'echo' | 'fable' | 'nova' | 'onyx' | 'sage' | 'shimmer'  // tts-1
+  | 'ballad' | 'verse' | 'marin' | 'cedar'  // gpt-4o-mini-tts only
+
+export type TTSModel = 'tts-1' | 'tts-1-hd' | 'gpt-4o-mini-tts'
 
 export interface TTSOptions {
   voice?: TTSVoice
-  model?: 'tts-1' | 'tts-1-hd'
+  model?: TTSModel
   speed?: number // 0.25 to 4.0, default 1.0
+  instructions?: string // gpt-4o-mini-tts only: how to speak
 }
 
 const DEFAULT_OPTIONS: Required<TTSOptions> = {
-  voice: 'alloy', // Neutral, balanced — selected for Imogen
-  model: 'tts-1', // Standard quality, faster
-  speed: 1.15, // Slightly faster, more natural podcast pace
+  voice: 'marin',
+  model: 'gpt-4o-mini-tts',
+  speed: 1.0,
+  instructions: 'Speak warmly and conversationally, like a friendly colleague giving a morning briefing. Natural pacing, not rushed.',
 }
 
 export async function textToSpeech(
   text: string,
   options: TTSOptions = {}
 ): Promise<Buffer> {
-  const { voice, model, speed } = { ...DEFAULT_OPTIONS, ...options }
+  const { voice, model, speed, instructions } = { ...DEFAULT_OPTIONS, ...options }
+
+  const body: Record<string, unknown> = {
+    model,
+    voice,
+    input: text,
+    response_format: 'opus', // Telegram-native format
+    speed,
+  }
+
+  // gpt-4o-mini-tts supports instructions for how to speak
+  if (model === 'gpt-4o-mini-tts' && instructions) {
+    body.instructions = instructions
+  }
 
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
@@ -27,13 +46,7 @@ export async function textToSpeech(
       Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      model,
-      voice,
-      input: text,
-      response_format: 'opus', // Telegram-native format
-      speed,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!response.ok) {
