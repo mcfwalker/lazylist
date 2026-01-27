@@ -23,6 +23,7 @@ export interface DigestInput {
     id: string
     displayName: string | null
     timezone: string
+    imogenContext: string | null // Imogen's evolving memory of this user
   }
   items: DigestItem[]
   previousDigest: {
@@ -98,6 +99,9 @@ The script will be converted to audio via text-to-speech, so:
 4. Category blocks (group items, provide narrative transitions)
 5. Closing (brief, genuine)
 
+## What You Know About ${userName}
+${user.imogenContext || 'This is a new user — you don\'t have context yet. Pay attention to patterns in what they save.'}
+
 ## Previous Digest Context
 ${previousContext}
 
@@ -136,4 +140,46 @@ export function estimateDuration(script: string): number {
   const wordCount = script.split(/\s+/).length
   const minutes = wordCount / 140
   return Math.ceil(minutes * 60) // Return seconds
+}
+
+// Update Imogen's context/memory about a user after a digest
+export async function updateUserContext(
+  currentContext: string | null,
+  items: DigestItem[],
+  userName: string
+): Promise<string> {
+  const itemsSummary = items
+    .map((i) => `- ${i.title} (${i.domain || 'general'}, ${i.contentType || 'unknown'})`)
+    .join('\n')
+
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 500,
+    messages: [
+      {
+        role: 'user',
+        content: `You are maintaining a brief context profile for a user named ${userName}. This helps personalize their daily knowledge digests.
+
+Current context:
+${currentContext || '(none yet)'}
+
+Items they just saved:
+${itemsSummary}
+
+Update the context profile. Keep it to 2-4 sentences max. Note:
+- Recurring themes or interests
+- Preferred content types (repos, tools, tutorials, etc.)
+- Any patterns you notice
+
+Output ONLY the updated context, nothing else.`,
+      },
+    ],
+  })
+
+  const textBlock = message.content.find((block) => block.type === 'text')
+  if (!textBlock || textBlock.type !== 'text') {
+    return currentContext || ''
+  }
+
+  return textBlock.text
 }

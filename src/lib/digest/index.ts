@@ -2,7 +2,7 @@
 // Coordinates script generation, TTS, and delivery
 
 import { createServiceClient } from '@/lib/supabase'
-import { generateScript, estimateDuration, DigestItem } from './generator'
+import { generateScript, estimateDuration, updateUserContext, DigestItem } from './generator'
 import { textToSpeech } from './tts'
 import { sendVoiceMessage, sendTextMessage } from './sender'
 import { EMPTY_DAY_SCRIPT } from './imogen'
@@ -14,6 +14,7 @@ export interface DigestUser {
   digest_enabled: boolean
   digest_time: string
   timezone: string
+  imogen_context: string | null
 }
 
 // Main orchestrator: generate and send a digest for a user
@@ -47,6 +48,7 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
       id: user.id,
       displayName: user.display_name,
       timezone: user.timezone,
+      imogenContext: user.imogen_context,
     },
     items,
     previousDigest,
@@ -86,6 +88,24 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
     console.error('Failed to store digest record:', insertError)
   } else {
     console.log(`Digest record stored for user ${user.id}`)
+  }
+
+  // 7. Update Imogen's context/memory about this user
+  console.log('Updating Imogen context...')
+  try {
+    const newContext = await updateUserContext(
+      user.imogen_context,
+      items,
+      user.display_name || 'this user'
+    )
+    await supabase
+      .from('users')
+      .update({ imogen_context: newContext })
+      .eq('id', user.id)
+    console.log('Imogen context updated')
+  } catch (e) {
+    console.error('Failed to update Imogen context:', e)
+    // Non-fatal, continue
   }
 }
 
@@ -155,7 +175,7 @@ export async function getUsersForDigestNow(): Promise<DigestUser[]> {
   // Get all users with digest enabled
   const { data: users, error } = await supabase
     .from('users')
-    .select('id, display_name, telegram_user_id, digest_enabled, digest_time, timezone')
+    .select('id, display_name, telegram_user_id, digest_enabled, digest_time, timezone, imogen_context')
     .eq('digest_enabled', true)
     .not('telegram_user_id', 'is', null)
 

@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
       const { data: user, error } = await supabase
         .from('users')
         .select(
-          'id, display_name, telegram_user_id, digest_enabled, digest_time, timezone'
+          'id, display_name, telegram_user_id, digest_enabled, digest_time, timezone, imogen_context'
         )
         .eq('id', testUserId)
         .single()
