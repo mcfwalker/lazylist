@@ -6,14 +6,23 @@ export interface TelegramUser {
   id: string
   email: string
   display_name: string | null
+  digest_enabled: boolean
+  digest_time: string
+  timezone: string
+  telegram_user_id: number
+  telegram_welcome_sent: boolean
 }
 
-export async function getUserByTelegramId(telegramUserId: number): Promise<TelegramUser | null> {
+export async function getUserByTelegramId(
+  telegramUserId: number
+): Promise<TelegramUser | null> {
   const supabase = createServiceClient()
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, email, display_name')
+    .select(
+      'id, email, display_name, digest_enabled, digest_time, timezone, telegram_user_id, telegram_welcome_sent'
+    )
     .eq('telegram_user_id', telegramUserId)
     .single()
 
@@ -21,7 +30,13 @@ export async function getUserByTelegramId(telegramUserId: number): Promise<Teleg
     return null
   }
 
-  return data
+  return {
+    ...data,
+    digest_enabled: data.digest_enabled ?? true,
+    digest_time: data.digest_time ?? '07:00',
+    timezone: data.timezone ?? 'America/Los_Angeles',
+    telegram_welcome_sent: data.telegram_welcome_sent ?? false,
+  }
 }
 
 export async function sendMessage(

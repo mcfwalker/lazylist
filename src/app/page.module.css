@@ -61,6 +61,18 @@
   border-color: var(--accent);
 }
 
+.settingsLink {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.settingsLink:hover {
+  color: var(--text);
+}
+
 .logout {
   padding: 8px 12px;
   font-size: 13px;

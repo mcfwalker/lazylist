@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Item, CurrentMonthStats } from '@/lib/supabase'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { FilterBar } from '@/components/FilterBar'
@@ -69,6 +70,16 @@ export default function Home() {
     fetchStats()
   }, [])
 
+  // Sync browser timezone to user profile (fire-and-forget)
+  useEffect(() => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    fetch('/api/users/timezone', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timezone: tz }),
+    }).catch(() => {}) // Silent failure - non-critical
+  }, [])
+
   const updateItem = async (id: string, updates: Partial<Item>) => {
     try {
       const res = await fetch(`/api/items/${id}`, {
@@ -112,6 +123,9 @@ export default function Home() {
             onChange={(e) => setSearch(e.target.value)}
           />
           <ThemeToggle />
+          <Link href="/settings" className={styles.settingsLink}>
+            settings
+          </Link>
           <button onClick={handleLogout} className={styles.logout}>
             logout
           </button>
