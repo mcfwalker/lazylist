@@ -7,8 +7,8 @@
  *
  * GET /api/cron/digest - Process digests (protected by CRON_SECRET)
  *
- * Query Parameters (test mode only):
- * - test=true: Bypass CRON_SECRET check
+ * Query Parameters (development only):
+ * - test=true: Bypass CRON_SECRET check (disabled in production)
  * - user_id: Send digest to specific user
  *
  * Flow:
@@ -36,7 +36,14 @@ export async function GET(request: NextRequest) {
 
   // Verify authorization
   // In production, Vercel cron sends Authorization header
-  // For test mode, we skip this check
+  // Test mode is only allowed in development
+  if (isTest && process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { error: 'Test mode disabled in production' },
+      { status: 403 }
+    )
+  }
+
   if (!isTest) {
     const authHeader = request.headers.get('authorization')
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
