@@ -1,115 +1,173 @@
-/* Viewport - white background */
+/* Warm cream backdrop */
 .main {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
+  background: #FBF5F0;
   padding: 20px;
   box-sizing: border-box;
-  overflow: auto;
+  overflow: hidden;
 }
 
-/* Side by side container */
-.container {
+/* Ambient orbs for depth */
+.ambientOrb1 {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 200, 170, 0.3) 0%, transparent 70%);
+  top: -200px;
+  right: -100px;
+  pointer-events: none;
+}
+
+.ambientOrb2 {
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(200, 180, 220, 0.2) 0%, transparent 70%);
+  bottom: -150px;
+  left: -100px;
+  pointer-events: none;
+}
+
+/* Liquid glass card */
+.glassCard {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 40px;
-  max-width: 900px;
+  align-items: stretch;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 32px;
+  padding: 16px;
+  gap: 8px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.02);
+  max-width: 520px;
+  width: 100%;
 }
 
-/* Image on left */
-.bgImage {
-  width: 400px;
-  height: auto;
+/* Inner highlight for glass depth */
+.glassHighlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 32px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  pointer-events: none;
+}
+
+/* Photo section */
+.photoSection {
+  position: relative;
   flex-shrink: 0;
+  width: 200px;
+  height: 220px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.06),
+    0 1px 2px rgba(255, 255, 255, 0.8);
 }
 
-/* Content on right */
-.content {
+.photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Form wrapper */
+.formWrapper {
+  flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 16px;
-}
-
-/* Stack on mobile */
-@media (max-width: 768px) {
-  .container {
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .bgImage {
-    width: 280px;
-  }
-}
-
-.floatingTitle {
-  display: flex;
   justify-content: center;
-  font-family: 'Mamoth', sans-serif;
-  font-size: 52px;
-  color: #000000;
-  user-select: none;
+  min-width: 0;
 }
 
-@media (max-width: 600px) {
-  .floatingTitle {
-    font-size: 36px;
-  }
-}
-
-.letter {
-  display: inline-block;
-}
-
-.form {
+/* Form section */
+.formSection {
   display: flex;
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  max-width: 340px;
   padding: 20px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
 }
 
+/* Input fields - pill shaped, glass effect */
 .input {
-  padding: 12px 16px;
-  font-size: 16px;
-  border: 1px solid var(--input);
-  border-radius: 8px;
-  background: var(--background);
-  color: var(--foreground);
+  padding: 16px 24px;
+  font-size: 15px;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  border: none;
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #3d3d3d;
   text-align: center;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(255, 255, 255, 0.9);
+  transition: all 0.2s ease;
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--ring);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.06),
+    0 0 0 3px rgba(200, 180, 160, 0.3);
 }
 
 .input::placeholder {
-  color: var(--muted-foreground);
+  color: #a0a0a0;
 }
 
+/* Button - pill shaped */
 .button {
-  padding: 12px 16px;
-  font-size: 16px;
+  padding: 16px 24px;
+  font-size: 15px;
+  font-family: inherit;
   font-weight: 500;
+  letter-spacing: 0.02em;
   border: none;
-  border-radius: 8px;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  border-radius: 50px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #3d3d3d;
   cursor: pointer;
-  transition: opacity 0.15s;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.04),
+    0 1px 2px rgba(255, 255, 255, 0.9);
+  transition: all 0.2s ease;
 }
 
 .button:hover:not(:disabled) {
-  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.04),
+    0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .button:disabled {
@@ -118,15 +176,61 @@
 }
 
 .error {
-  color: var(--destructive);
-  font-size: 14px;
+  color: #c45c4a;
+  font-size: 13px;
   text-align: center;
   margin: 0;
+  padding: 0 12px;
 }
 
 .success {
-  color: var(--foreground);
+  color: #5a7a5a;
   font-size: 14px;
   text-align: center;
   margin: 0;
+  padding: 8px 0;
+}
+
+/* Branding */
+.branding {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Mamoth', sans-serif;
+  font-size: 18px;
+  color: rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.1em;
+  user-select: none;
+}
+
+/* Mobile responsive */
+@media (max-width: 560px) {
+  .glassCard {
+    flex-direction: column;
+    max-width: 320px;
+    padding: 12px;
+    border-radius: 28px;
+  }
+
+  .photoSection {
+    width: 100%;
+    height: 180px;
+    border-radius: 18px;
+  }
+
+  .formSection {
+    padding: 16px 12px;
+  }
+
+  .input,
+  .button {
+    padding: 14px 20px;
+    font-size: 14px;
+  }
+
+  .branding {
+    bottom: 20px;
+    font-size: 16px;
+  }
 }

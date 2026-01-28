@@ -5,49 +5,6 @@ import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import styles from './page.module.css'
 
-const TITLE = "dont log in"
-
-function FloatingLetter({
-  letter,
-  index,
-}: {
-  letter: string
-  index: number
-}) {
-  return (
-    <motion.span
-      className={styles.letter}
-      animate={{
-        y: [0, -8, 0],
-      }}
-      transition={{
-        y: {
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: index * 0.15,
-        },
-      }}
-    >
-      {letter === ' ' ? '\u00A0' : letter}
-    </motion.span>
-  )
-}
-
-function FloatingTitle() {
-  return (
-    <div className={styles.floatingTitle}>
-      {TITLE.split('').map((letter, index) => (
-        <FloatingLetter
-          key={index}
-          letter={letter}
-          index={index}
-        />
-      ))}
-    </div>
-  )
-}
-
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
@@ -55,7 +12,6 @@ function LoginForm() {
   const [sent, setSent] = useState(false)
   const searchParams = useSearchParams()
 
-  // Handle auth errors from callback redirect
   useEffect(() => {
     const urlError = searchParams.get('error')
     if (urlError === 'auth_failed') {
@@ -90,7 +46,12 @@ function LoginForm() {
 
   if (sent) {
     return (
-      <div className={styles.form}>
+      <motion.div
+        className={styles.formSection}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
         <p className={styles.success}>Check your email for the magic link</p>
         <button
           type="button"
@@ -99,12 +60,12 @@ function LoginForm() {
         >
           try again
         </button>
-      </div>
+      </motion.div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} className={styles.form}>
+    <form onSubmit={handleSubmit} className={styles.formSection}>
       <input
         type="email"
         placeholder="email"
@@ -125,19 +86,58 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <main className={styles.main}>
-      <div className={styles.container}>
-        <img
-          src="/laz_static_sm.png"
-          alt=""
-          className={styles.bgImage}
-        />
-        <div className={styles.content}>
-          <FloatingTitle />
-          <Suspense fallback={<div className={styles.form} />}>
+      {/* Ambient background elements */}
+      <div className={styles.ambientOrb1} />
+      <div className={styles.ambientOrb2} />
+
+      <motion.div
+        className={styles.glassCard}
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{
+          duration: 0.6,
+          ease: [0.22, 1, 0.36, 1]
+        }}
+      >
+        {/* Inner glass highlight */}
+        <div className={styles.glassHighlight} />
+
+        {/* Photo section */}
+        <motion.div
+          className={styles.photoSection}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <img
+            src="/login-photo.jpg"
+            alt=""
+            className={styles.photo}
+          />
+        </motion.div>
+
+        {/* Form section */}
+        <motion.div
+          className={styles.formWrapper}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <Suspense fallback={<div className={styles.formSection} />}>
             <LoginForm />
           </Suspense>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
+
+      {/* Branding */}
+      <motion.div
+        className={styles.branding}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.5 }}
+      >
+        lazylist
+      </motion.div>
     </main>
   )
 }
