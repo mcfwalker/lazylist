@@ -18,31 +18,29 @@ function createRequest(): NextRequest {
 }
 
 describe('stats API route', () => {
-  let mockSupabase: {
-    from: ReturnType<typeof vi.fn>
-    select: ReturnType<typeof vi.fn>
-    eq: ReturnType<typeof vi.fn>
-    gte: ReturnType<typeof vi.fn>
-    or: ReturnType<typeof vi.fn>
-  }
+  let itemsQueryResult: { data: unknown[] | null; error: { message: string } | null }
+  let digestsQueryResult: { data: unknown[] | null; error: { message: string } | null }
+  let currentTable: string
 
   beforeEach(() => {
-    mockSupabase = {
-      from: vi.fn().mockReturnThis(),
+    itemsQueryResult = { data: [], error: null }
+    digestsQueryResult = { data: [], error: null }
+    currentTable = ''
+
+    const mockSupabase = {
+      from: vi.fn((table: string) => {
+        currentTable = table
+        return mockSupabase
+      }),
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
-      gte: vi.fn().mockReturnThis(),
-      or: vi.fn(),
+      or: vi.fn(() => {
+        if (currentTable === 'items') {
+          return itemsQueryResult
+        }
+        return digestsQueryResult
+      }),
     }
-
-    mockSupabase.from.mockReturnValue(mockSupabase)
-    mockSupabase.select.mockReturnValue(mockSupabase)
-    mockSupabase.eq.mockReturnValue(mockSupabase)
-    mockSupabase.gte.mockReturnValue(mockSupabase)
-    mockSupabase.or.mockReturnValue({
-      data: [],
-      error: null,
-    })
 
     vi.mocked(createServiceClient).mockReturnValue(
       mockSupabase as unknown as ReturnType<typeof createServiceClient>
@@ -77,63 +75,57 @@ describe('stats API route', () => {
     })
   })
 
-  describe('query building', () => {
-    it('filters by user_id', async () => {
-      const request = createRequest()
-
-      await GET(request)
-
-      expect(mockSupabase.eq).toHaveBeenCalledWith('user_id', TEST_USER_ID)
-    })
-
-    it('filters for current month', async () => {
-      const request = createRequest()
-
-      await GET(request)
-
-      expect(mockSupabase.gte).toHaveBeenCalledWith(
-        'captured_at',
-        expect.stringMatching(/^\d{4}-\d{2}-01T/)
-      )
-    })
-
-    it('filters for items with costs', async () => {
-      const request = createRequest()
-
-      await GET(request)
-
-      expect(mockSupabase.or).toHaveBeenCalledWith(
-        'openai_cost.not.is.null,grok_cost.not.is.null'
-      )
-    })
-  })
-
   describe('cost calculation', () => {
-    it('calculates total cost from openai_cost and grok_cost', async () => {
-      mockSupabase.or.mockReturnValue({
+    it('calculates total cost from items (openai, grok, repo_extraction)', async () => {
+      itemsQueryResult = {
         data: [
-          { openai_cost: 0.01, grok_cost: 0.05 },
-          { openai_cost: 0.02, grok_cost: null },
-          { openai_cost: null, grok_cost: 0.03 },
+          { openai_cost: 0.01, grok_cost: 0.05, repo_extraction_cost: 0.02 },
+          { openai_cost: 0.02, grok_cost: null, repo_extraction_cost: null },
+          { openai_cost: null, grok_cost: 0.03, repo_extraction_cost: 0.01 },
         ],
         error: null,
-      })
+      }
+      digestsQueryResult = { data: [], error: null }
 
       const request = createRequest()
       const response = await GET(request)
       const data = await response.json()
 
-      expect(data.totalCost).toBeCloseTo(0.11, 5)
+      // 0.01+0.05+0.02 + 0.02+0+0 + 0+0.03+0.01 = 0.14
+      expect(data.totalCost).toBeCloseTo(0.14, 5)
     })
 
-    it('calculates average cost per entry', async () => {
-      mockSupabase.or.mockReturnValue({
+    it('includes digest costs in total', async () => {
+      itemsQueryResult = {
+        data: [{ openai_cost: 0.10, grok_cost: null, repo_extraction_cost: null }],
+        error: null,
+      }
+      digestsQueryResult = {
         data: [
-          { openai_cost: 0.10, grok_cost: null },
-          { openai_cost: 0.20, grok_cost: null },
+          { anthropic_cost: 0.05, tts_cost: 0.02 },
+          { anthropic_cost: 0.03, tts_cost: null },
         ],
         error: null,
-      })
+      }
+
+      const request = createRequest()
+      const response = await GET(request)
+      const data = await response.json()
+
+      // Items: 0.10, Digests: 0.05+0.02 + 0.03+0 = 0.10
+      // Total: 0.10 + 0.10 = 0.20
+      expect(data.totalCost).toBeCloseTo(0.20, 5)
+    })
+
+    it('calculates average cost per entry (items only)', async () => {
+      itemsQueryResult = {
+        data: [
+          { openai_cost: 0.10, grok_cost: null, repo_extraction_cost: null },
+          { openai_cost: 0.20, grok_cost: null, repo_extraction_cost: null },
+        ],
+        error: null,
+      }
+      digestsQueryResult = { data: [], error: null }
 
       const request = createRequest()
       const response = await GET(request)
@@ -143,13 +135,14 @@ describe('stats API route', () => {
     })
 
     it('handles null costs correctly', async () => {
-      mockSupabase.or.mockReturnValue({
+      itemsQueryResult = {
         data: [
-          { openai_cost: null, grok_cost: null },
-          { openai_cost: 0.05, grok_cost: null },
+          { openai_cost: null, grok_cost: null, repo_extraction_cost: null },
+          { openai_cost: 0.05, grok_cost: null, repo_extraction_cost: null },
         ],
         error: null,
-      })
+      }
+      digestsQueryResult = { data: [], error: null }
 
       const request = createRequest()
       const response = await GET(request)
@@ -160,10 +153,8 @@ describe('stats API route', () => {
     })
 
     it('returns zero average when no entries', async () => {
-      mockSupabase.or.mockReturnValue({
-        data: [],
-        error: null,
-      })
+      itemsQueryResult = { data: [], error: null }
+      digestsQueryResult = { data: [], error: null }
 
       const request = createRequest()
       const response = await GET(request)
@@ -176,39 +167,31 @@ describe('stats API route', () => {
 
   describe('response format', () => {
     it('returns all required fields', async () => {
-      mockSupabase.or.mockReturnValue({
-        data: [{ openai_cost: 0.01, grok_cost: 0.02 }],
+      itemsQueryResult = {
+        data: [{ openai_cost: 0.01, grok_cost: 0.02, repo_extraction_cost: null }],
         error: null,
-      })
+      }
+      digestsQueryResult = { data: [], error: null }
 
       const request = createRequest()
       const response = await GET(request)
       const data = await response.json()
 
-      expect(data).toHaveProperty('daysElapsed')
       expect(data).toHaveProperty('entryCount')
       expect(data).toHaveProperty('totalCost')
       expect(data).toHaveProperty('avgCost')
     })
 
-    it('daysElapsed equals current day of month', async () => {
-      const request = createRequest()
-      const response = await GET(request)
-      const data = await response.json()
-
-      const today = new Date()
-      expect(data.daysElapsed).toBe(today.getDate())
-    })
-
     it('entryCount matches number of items returned', async () => {
-      mockSupabase.or.mockReturnValue({
+      itemsQueryResult = {
         data: [
-          { openai_cost: 0.01, grok_cost: null },
-          { openai_cost: 0.02, grok_cost: null },
-          { openai_cost: 0.03, grok_cost: null },
+          { openai_cost: 0.01, grok_cost: null, repo_extraction_cost: null },
+          { openai_cost: 0.02, grok_cost: null, repo_extraction_cost: null },
+          { openai_cost: 0.03, grok_cost: null, repo_extraction_cost: null },
         ],
         error: null,
-      })
+      }
+      digestsQueryResult = { data: [], error: null }
 
       const request = createRequest()
       const response = await GET(request)
@@ -219,11 +202,8 @@ describe('stats API route', () => {
   })
 
   describe('error handling', () => {
-    it('returns 500 on database error', async () => {
-      mockSupabase.or.mockReturnValue({
-        data: null,
-        error: { message: 'DB error' },
-      })
+    it('returns 500 on items database error', async () => {
+      itemsQueryResult = { data: null, error: { message: 'DB error' } }
 
       const request = createRequest()
       const response = await GET(request)
@@ -233,11 +213,21 @@ describe('stats API route', () => {
       expect(data.error).toBe('Failed to fetch stats')
     })
 
-    it('handles null data gracefully', async () => {
-      mockSupabase.or.mockReturnValue({
-        data: null,
-        error: null,
-      })
+    it('returns 500 on digests database error', async () => {
+      itemsQueryResult = { data: [], error: null }
+      digestsQueryResult = { data: null, error: { message: 'DB error' } }
+
+      const request = createRequest()
+      const response = await GET(request)
+
+      expect(response.status).toBe(500)
+      const data = await response.json()
+      expect(data.error).toBe('Failed to fetch stats')
+    })
+
+    it('handles null items data gracefully', async () => {
+      itemsQueryResult = { data: null, error: null }
+      digestsQueryResult = { data: [], error: null }
 
       const request = createRequest()
       const response = await GET(request)

@@ -1,3 +1,21 @@
+/**
+ * Telegram Bot Webhook API Route
+ *
+ * Primary content capture endpoint. Receives messages from Telegram bot,
+ * extracts URLs, and queues them for AI processing.
+ *
+ * POST /api/telegram - Webhook handler for Telegram bot updates
+ *
+ * Features:
+ * - Validates webhook secret for security
+ * - Extracts URLs from message text or captions
+ * - Supports digest commands ("digest at 7am", "pause digest", etc.)
+ * - Creates user records for new Telegram users
+ * - Queues items for async processing (classification, transcription)
+ *
+ * Note: This route is public (no auth middleware) but protected by
+ * Telegram's webhook secret verification.
+ */
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { detectSourceType } from '@/lib/processors/detect'

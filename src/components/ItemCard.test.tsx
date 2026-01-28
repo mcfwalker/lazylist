@@ -44,6 +44,7 @@ vi.mock('@/app/page.module.css', () => ({
 const mockItem: Item = {
   id: 'test-id-123',
   item_number: 42,
+  user_id: 'test-user-uuid',
   source_url: 'https://github.com/test/repo',
   source_type: 'github',
   status: 'processed',
@@ -60,6 +61,9 @@ const mockItem: Item = {
   extracted_entities: { repos: ['https://github.com/other/repo'], tools: [], techniques: [] },
   raw_data: null,
   error_message: null,
+  openai_cost: null,
+  grok_cost: null,
+  repo_extraction_cost: null,
 }
 
 describe('ItemCard', () => {

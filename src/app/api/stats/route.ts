@@ -1,7 +1,23 @@
+/**
+ * Stats API Route
+ *
+ * Returns aggregated cost statistics for the authenticated user.
+ * Includes both item processing costs (OpenAI, Grok) and digest costs.
+ *
+ * GET /api/stats - Get all-time cost statistics
+ *
+ * @returns { entryCount, totalCost, avgCost }
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
 
+/**
+ * Get aggregated cost statistics for the current user.
+ *
+ * @param request - Contains auth header
+ * @returns { entryCount: number, totalCost: number, avgCost: number }
+ */
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
   if (!userId) {

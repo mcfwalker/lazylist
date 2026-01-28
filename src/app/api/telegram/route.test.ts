@@ -34,7 +34,16 @@ import { createServiceClient } from '@/lib/supabase'
 import { processItem } from '@/lib/processors'
 import { sendMessage, getUserByTelegramId, extractUrl } from '@/lib/telegram'
 
-const TEST_USER = { id: 'test-user-uuid', email: 'test@example.com', display_name: 'Test' }
+const TEST_USER = {
+  id: 'test-user-uuid',
+  email: 'test@example.com',
+  display_name: 'Test',
+  digest_enabled: true,
+  digest_time: '07:00',
+  timezone: 'America/Los_Angeles',
+  telegram_user_id: 123456,
+  telegram_welcome_sent: true,
+}
 const TEST_WEBHOOK_SECRET = 'test-webhook-secret-123'
 
 // Helper to create mock telegram update
@@ -239,7 +248,10 @@ describe('telegram webhook route', () => {
       const request = createTelegramUpdate(123, 123, 'Just some text')
       await POST(request)
 
-      expect(sendMessage).toHaveBeenCalledWith(123, 'Send me a link to capture')
+      expect(sendMessage).toHaveBeenCalledWith(
+        123,
+        'Send me a link to capture, or tell me when you want your daily digest!'
+      )
     })
 
     it('responds with error for invalid URL', async () => {

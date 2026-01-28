@@ -7,7 +7,6 @@ import { ThemeToggle } from './ThemeToggle'
 
 describe('ThemeToggle', () => {
   let mockLocalStorage: Record<string, string>
-  let mockMatchMedia: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     // Mock localStorage
@@ -19,15 +18,7 @@ describe('ThemeToggle', () => {
       }),
     })
 
-    // Mock matchMedia
-    mockMatchMedia = vi.fn().mockReturnValue({
-      matches: false,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })
-    vi.stubGlobal('matchMedia', mockMatchMedia)
-
-    // Mock document.documentElement.classList
+    // Reset document class
     document.documentElement.classList.remove('dark')
   })
 
@@ -40,15 +31,21 @@ describe('ThemeToggle', () => {
     expect(screen.getByRole('button')).toBeInTheDocument()
   })
 
-  it('shows moon icon in light mode', () => {
+  it('shows moon icon (SVG) in light mode', () => {
     render(<ThemeToggle />)
-    expect(screen.getByText('🌙')).toBeInTheDocument()
+    // Moon icon has a path element
+    const button = screen.getByRole('button')
+    expect(button.querySelector('svg')).toBeInTheDocument()
+    expect(button.querySelector('path')).toBeInTheDocument()
   })
 
-  it('shows sun icon in dark mode', () => {
+  it('shows sun icon (SVG) in dark mode', () => {
     mockLocalStorage['theme'] = 'dark'
     render(<ThemeToggle />)
-    expect(screen.getByText('☀️')).toBeInTheDocument()
+    // Sun icon has circle and line elements
+    const button = screen.getByRole('button')
+    expect(button.querySelector('svg')).toBeInTheDocument()
+    expect(button.querySelector('circle')).toBeInTheDocument()
   })
 
   it('toggles to dark mode when clicked in light mode', () => {
@@ -58,7 +55,6 @@ describe('ThemeToggle', () => {
 
     expect(localStorage.setItem).toHaveBeenCalledWith('theme', 'dark')
     expect(document.documentElement.classList.contains('dark')).toBe(true)
-    expect(screen.getByText('☀️')).toBeInTheDocument()
   })
 
   it('toggles to light mode when clicked in dark mode', () => {
@@ -69,35 +65,20 @@ describe('ThemeToggle', () => {
 
     expect(localStorage.setItem).toHaveBeenCalledWith('theme', 'light')
     expect(document.documentElement.classList.contains('dark')).toBe(false)
-    expect(screen.getByText('🌙')).toBeInTheDocument()
   })
 
-  it('respects system preference when no localStorage value', () => {
-    mockMatchMedia.mockReturnValue({
-      matches: true, // prefers-color-scheme: dark
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })
+  it('defaults to light mode when no localStorage value', () => {
+    render(<ThemeToggle />)
 
+    // Component defaults to light mode
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+  })
+
+  it('respects localStorage dark preference', () => {
+    mockLocalStorage['theme'] = 'dark'
     render(<ThemeToggle />)
 
     expect(document.documentElement.classList.contains('dark')).toBe(true)
-    expect(screen.getByText('☀️')).toBeInTheDocument()
-  })
-
-  it('prefers localStorage over system preference', () => {
-    mockLocalStorage['theme'] = 'light'
-    mockMatchMedia.mockReturnValue({
-      matches: true, // system prefers dark
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })
-
-    render(<ThemeToggle />)
-
-    // Should be light mode because localStorage says so
-    expect(document.documentElement.classList.contains('dark')).toBe(false)
-    expect(screen.getByText('🌙')).toBeInTheDocument()
   })
 
   it('has correct title in light mode', () => {

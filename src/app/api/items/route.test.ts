@@ -22,7 +22,7 @@ function createRequest(params: Record<string, string> = {}): NextRequest {
 }
 
 // Create a chainable mock that also works as a promise
-function createSupabaseMock(defaultResult = { data: [{ id: '1', title: 'Test Item' }], error: null, count: 1 }) {
+function createSupabaseMock(defaultResult: { data: unknown[] | null; error: { message: string } | null; count: number | null } = { data: [{ id: '1', title: 'Test Item' }], error: null, count: 1 }) {
   let result = defaultResult
 
   const mock = {

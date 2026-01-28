@@ -1,8 +1,25 @@
+/**
+ * Single Item API Route
+ *
+ * CRUD operations for individual items. All operations verify user ownership.
+ *
+ * GET /api/items/[id] - Get item details
+ * PATCH /api/items/[id] - Update item fields (domain, title, tags, etc.)
+ * DELETE /api/items/[id] - Delete item
+ * POST /api/items/[id] - Reprocess item (re-run AI classification)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { processItem } from '@/lib/processors'
 import { getCurrentUserId } from '@/lib/auth'
 
+/**
+ * Get a single item by ID.
+ *
+ * @param request - Contains auth header
+ * @param params - Contains item ID
+ * @returns Item details or 404 if not found
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -29,6 +46,14 @@ export async function GET(
   return NextResponse.json(data)
 }
 
+/**
+ * Update an item's metadata.
+ * Allowed fields: domain, content_type, tags, title, summary
+ *
+ * @param request - JSON body with fields to update
+ * @param params - Contains item ID
+ * @returns Updated item or error
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -80,6 +105,13 @@ export async function PATCH(
   }
 }
 
+/**
+ * Delete an item.
+ *
+ * @param request - Contains auth header
+ * @param params - Contains item ID
+ * @returns Success confirmation or error
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -106,7 +138,14 @@ export async function DELETE(
   return NextResponse.json({ success: true })
 }
 
-// POST: Reprocess an item
+/**
+ * Trigger reprocessing of an item.
+ * Resets status to pending and re-runs AI classification pipeline.
+ *
+ * @param request - Contains auth header
+ * @param params - Contains item ID
+ * @returns Confirmation that reprocessing has started
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

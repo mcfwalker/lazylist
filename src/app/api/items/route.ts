@@ -1,8 +1,29 @@
+/**
+ * Items API Route
+ *
+ * Retrieves captured items for the authenticated user with filtering and pagination.
+ *
+ * GET /api/items - List items with optional filters
+ *
+ * Query Parameters:
+ * - domain: Filter by domain (e.g., "vibe-coding", "ai-filmmaking")
+ * - type: Filter by content type (e.g., "repo", "technique", "tool")
+ * - status: Filter by processing status ("pending", "processed", "failed")
+ * - q: Search query (searches title, summary, transcript, tags)
+ * - limit: Max items to return (default: 50, max: 100)
+ * - offset: Pagination offset (default: 0)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { sanitizeSearchInput } from '@/lib/security'
 import { getCurrentUserId } from '@/lib/auth'
 
+/**
+ * Get items for the authenticated user with filtering and pagination.
+ *
+ * @param request - Contains query parameters for filtering
+ * @returns { items: Item[], total: number }
+ */
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
   if (!userId) {

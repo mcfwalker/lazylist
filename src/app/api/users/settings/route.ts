@@ -1,7 +1,26 @@
+/**
+ * User Settings API Route
+ *
+ * Manages user preferences for digest delivery.
+ *
+ * GET /api/users/settings - Get current settings
+ * PATCH /api/users/settings - Update settings
+ *
+ * Settings:
+ * - digest_enabled: boolean - Whether to receive daily digests
+ * - digest_time: string - Time to deliver digest (HH:MM format)
+ * - timezone: string - IANA timezone for digest scheduling
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
 
+/**
+ * Get current user settings.
+ *
+ * @param request - Contains auth header
+ * @returns { digest_enabled, digest_time, timezone }
+ */
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
   if (!userId) {
@@ -26,6 +45,13 @@ export async function GET(request: NextRequest) {
   })
 }
 
+/**
+ * Update user settings.
+ * Validates timezone against IANA database and time format (HH:MM).
+ *
+ * @param request - JSON body with settings to update
+ * @returns Success confirmation or validation error
+ */
 export async function PATCH(request: NextRequest) {
   const userId = getCurrentUserId(request)
   if (!userId) {

@@ -1,6 +1,23 @@
-// Cron endpoint for daily voice digest
-// Runs hourly, checks which users need their digest based on timezone
-
+/**
+ * Cron Digest API Route
+ *
+ * Scheduled endpoint for generating and sending daily voice digests.
+ * Runs hourly via Vercel Cron, checks which users need their digest
+ * based on their preferred time and timezone.
+ *
+ * GET /api/cron/digest - Process digests (protected by CRON_SECRET)
+ *
+ * Query Parameters (test mode only):
+ * - test=true: Bypass CRON_SECRET check
+ * - user_id: Send digest to specific user
+ *
+ * Flow:
+ * 1. Find users whose digest_time matches current hour in their timezone
+ * 2. For each user, fetch items captured in last 24 hours
+ * 3. Generate personalized voice script via Claude
+ * 4. Convert to audio via OpenAI TTS
+ * 5. Send via Telegram voice message
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import {

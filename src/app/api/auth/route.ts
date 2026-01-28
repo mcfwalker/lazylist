@@ -1,7 +1,22 @@
+/**
+ * Authentication API Route
+ *
+ * Handles magic link authentication via Supabase Auth.
+ *
+ * POST /api/auth - Send magic link email
+ * DELETE /api/auth - Logout (clear session)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit } from '@/lib/security'
 import { createServerClient } from '@/lib/supabase'
 
+/**
+ * Send a magic link to the user's email for passwordless authentication.
+ * Rate limited to 5 attempts per 15 minutes per IP address.
+ *
+ * @param request - Must contain JSON body with { email: string }
+ * @returns Success message or error
+ */
 export async function POST(request: NextRequest) {
   // Rate limit by IP
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
@@ -46,6 +61,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * Sign out the current user, clearing their session.
+ *
+ * @returns Success confirmation
+ */
 export async function DELETE() {
   // Logout - sign out from Supabase Auth
   const supabase = await createServerClient()

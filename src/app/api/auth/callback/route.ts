@@ -1,7 +1,21 @@
+/**
+ * Auth Callback Route
+ *
+ * Handles the redirect from Supabase magic link authentication.
+ * Exchanges the auth code for a session and redirects to the app.
+ *
+ * GET /api/auth/callback?code=xxx - Exchange code for session
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+/**
+ * Exchange the magic link auth code for a session.
+ *
+ * @param request - Contains code parameter from Supabase
+ * @returns Redirect to home (success) or login page (failure)
+ */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const code = searchParams.get('code')

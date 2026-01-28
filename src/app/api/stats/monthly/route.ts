@@ -1,8 +1,24 @@
+/**
+ * Monthly Stats API Route
+ *
+ * Returns cost statistics broken down by month for the authenticated user.
+ * Used for the stats history page.
+ *
+ * GET /api/stats/monthly - Get month-by-month cost breakdown
+ *
+ * @returns MonthStats[] - Array sorted by month descending
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getCurrentUserId } from '@/lib/auth'
 import { MonthStats } from '@/lib/supabase'
 
+/**
+ * Get monthly cost breakdown for the current user.
+ *
+ * @param request - Contains auth header
+ * @returns Array of { month, entryCount, openaiCost, grokCost, totalCost, avgCost }
+ */
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
   if (!userId) {
