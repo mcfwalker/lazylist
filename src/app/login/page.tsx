@@ -121,14 +121,17 @@ export default function LoginPage() {
         </motion.div>
       </motion.div>
 
-      <motion.div
+      <motion.a
+        href="https://mcfw.io"
+        target="_blank"
+        rel="noopener noreferrer"
         className={styles.branding}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.35 }}
       >
-        lazylist
-      </motion.div>
+        <img src="/mcfw_ico.svg" alt="mcfw.io" className={styles.brandingIcon} />
+      </motion.a>
     </main>
   )
 }

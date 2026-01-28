@@ -29,7 +29,6 @@
   position: relative;
   flex-shrink: 0;
   width: 200px;
-  height: 220px;
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: var(--muted);
@@ -39,6 +38,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 
@@ -141,11 +141,18 @@
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 18px;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  letter-spacing: 0.05em;
-  user-select: none;
+  opacity: 0.4;
+  transition: opacity 0.15s ease;
+}
+
+.branding:hover {
+  opacity: 0.7;
+}
+
+.brandingIcon {
+  width: 64px;
+  height: 64px;
+  display: block;
 }
 
 /* Mobile responsive */
@@ -158,7 +165,7 @@
 
   .photoSection {
     width: 100%;
-    height: 180px;
+    aspect-ratio: 16 / 9;
   }
 
   .formSection {
