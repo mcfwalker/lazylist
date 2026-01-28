@@ -97,7 +97,7 @@ async function handleDigestCommand(
           digest_enabled: true,
           digest_time: user.digest_time || '07:00',
           timezone: user.timezone || 'America/Los_Angeles',
-          imogen_context: null,
+          molly_context: null,
         } as DigestUser)
       } catch (error) {
         console.error('Failed to generate test digest:', error)

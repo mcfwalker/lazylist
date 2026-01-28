@@ -53,6 +53,6 @@ export async function DELETE() {
 
   const response = NextResponse.json({ success: true })
   // Clear any legacy cookies
-  response.cookies.delete('lazylist_auth')
+  response.cookies.delete('mollymemo_auth')
   return response
 }

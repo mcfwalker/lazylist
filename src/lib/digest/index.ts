@@ -5,7 +5,7 @@ import { createServiceClient } from '@/lib/supabase'
 import { generateScript, estimateDuration, updateUserContext, DigestItem } from './generator'
 import { textToSpeech } from './tts'
 import { sendVoiceMessage, sendTextMessage } from './sender'
-import { EMPTY_DAY_SCRIPT } from './imogen'
+import { EMPTY_DAY_SCRIPT } from './molly'
 
 export interface DigestUser {
   id: string
@@ -14,7 +14,7 @@ export interface DigestUser {
   digest_enabled: boolean
   digest_time: string
   timezone: string
-  imogen_context: string | null
+  molly_context: string | null
 }
 
 // Main orchestrator: generate and send a digest for a user
@@ -58,7 +58,7 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
       id: user.id,
       displayName: user.display_name,
       timezone: user.timezone,
-      imogenContext: user.imogen_context,
+      mollyContext: user.molly_context,
     },
     items,
     previousDigest,
@@ -107,20 +107,20 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
     console.log(`Digest record stored for user ${user.id}`)
   }
 
-  // 7. Update Imogen's context/memory about this user
-  console.log('Updating Imogen context...')
+  // 7. Update Molly's context/memory about this user
+  console.log('Updating Molly context...')
   try {
     const { context: newContext, cost: contextCost } = await updateUserContext(
-      user.imogen_context,
+      user.molly_context,
       items,
       user.display_name || 'this user'
     )
     anthropicCost += contextCost
     await supabase
       .from('users')
-      .update({ imogen_context: newContext })
+      .update({ molly_context: newContext })
       .eq('id', user.id)
-    console.log('Imogen context updated')
+    console.log('Molly context updated')
 
     // Update digest with final anthropic cost (includes context update)
     if (insertedDigest?.id) {
@@ -130,7 +130,7 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
         .eq('id', insertedDigest.id)
     }
   } catch (e) {
-    console.error('Failed to update Imogen context:', e)
+    console.error('Failed to update Molly context:', e)
     // Non-fatal, continue
   }
 }
@@ -201,7 +201,7 @@ export async function getUsersForDigestNow(): Promise<DigestUser[]> {
   // Get all users with digest enabled
   const { data: users, error } = await supabase
     .from('users')
-    .select('id, display_name, telegram_user_id, digest_enabled, digest_time, timezone, imogen_context')
+    .select('id, display_name, telegram_user_id, digest_enabled, digest_time, timezone, molly_context')
     .eq('digest_enabled', true)
     .not('telegram_user_id', 'is', null)
 

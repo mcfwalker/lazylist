@@ -100,7 +100,7 @@ export async function searchGitHubRepoCandidates(
   const token = process.env.GITHUB_TOKEN
   const headers: Record<string, string> = {
     'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'LazyList',
+    'User-Agent': 'MollyMemo',
   }
   if (token) {
     headers['Authorization'] = `Bearer ${token}`

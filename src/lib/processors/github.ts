@@ -21,7 +21,7 @@ export async function processGitHub(url: string): Promise<GitHubMetadata | null>
   try {
     const headers: HeadersInit = {
       Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'LazyList/0.1',
+      'User-Agent': 'MollyMemo/0.1',
     }
 
     // Add auth if available for higher rate limits

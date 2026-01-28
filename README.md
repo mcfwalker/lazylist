@@ -1,4 +1,4 @@
-# LazyList
+# MollyMemo
 
 Personal knowledge capture system. Share links from your phone, auto-extract intelligence, query via Claude Code.
 
@@ -7,7 +7,7 @@ Personal knowledge capture system. Share links from your phone, auto-extract int
 1. **Capture** — Share a link from your phone (TikTok, GitHub, articles)
 2. **Process** — AI extracts metadata, transcribes videos, classifies content
 3. **Store** — Everything goes to Supabase with searchable metadata
-4. **Query** — Run `/lazylist` in Claude Code to find relevant items for your current project
+4. **Query** — Run `/mollymemo` in Claude Code to find relevant items for your current project
 
 ## Stack
 
@@ -21,8 +21,8 @@ Personal knowledge capture system. Share links from your phone, auto-extract int
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/mcfwalker/lazylist.git
-cd lazylist
+git clone https://github.com/mcfwalker/mollymemo.git
+cd mollymemo
 npm install
 ```
 
@@ -66,7 +66,7 @@ The Telegram bot is the easiest way to capture links from any device.
 4. Add your ID to `TELEGRAM_ALLOWED_USERS` (comma-separated for multiple users)
 5. Register the webhook:
    ```bash
-   curl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://lazylist.mcfw.io/api/telegram"
+   curl "https://api.telegram.org/bot{TOKEN}/setWebhook?url=https://mollymemo.com/api/telegram"
    ```
 
 Now just share any link to your bot to capture it.
@@ -78,7 +78,7 @@ Now just share any link to your bot to capture it.
 Capture a new URL.
 
 ```bash
-curl -X POST https://lazylist.mcfw.io/api/capture \
+curl -X POST https://mollymemo.com/api/capture \
   -H "Authorization: Bearer YOUR_API_SECRET_KEY" \
   -H "Content-Type: application/json" \
   -d '{"url": "https://github.com/user/repo"}'
@@ -94,7 +94,7 @@ Update an item (domain, content_type, tags, title, summary).
 
 ## Claude Code Skill
 
-Run `/lazylist` in Claude Code to search your captured knowledge for items relevant to your current project.
+Run `/mollymemo` in Claude Code to search your captured knowledge for items relevant to your current project.
 
 ## License
 

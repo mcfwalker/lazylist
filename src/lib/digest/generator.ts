@@ -2,7 +2,7 @@
 // Uses Claude to generate personalized, conversational scripts
 
 import Anthropic from '@anthropic-ai/sdk'
-import { IMOGEN_SOUL } from './imogen'
+import { MOLLY_SOUL } from './molly'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -31,7 +31,7 @@ export interface DigestInput {
     id: string
     displayName: string | null
     timezone: string
-    imogenContext: string | null // Imogen's evolving memory of this user
+    mollyContext: string | null // Molly's evolving memory of this user
   }
   items: DigestItem[]
   previousDigest: {
@@ -88,9 +88,9 @@ Reference this naturally if there's a thematic connection. Don't force it.`
     2
   )
 
-  const systemPrompt = `You are Imogen, a personal knowledge curator who delivers morning audio digests.
+  const systemPrompt = `You are Molly, a personal knowledge curator who delivers morning audio digests.
 
-${IMOGEN_SOUL}
+${MOLLY_SOUL}
 
 ## Task
 Generate a spoken script (5-7 minutes when read aloud at 140 wpm = 700-1000 words).
@@ -108,7 +108,7 @@ The script will be converted to audio via text-to-speech, so:
 5. Closing (brief, genuine)
 
 ## What You Know About ${userName}
-${user.imogenContext || 'This is a new user — you don\'t have context yet. Pay attention to patterns in what they save.'}
+${user.mollyContext || 'This is a new user — you don\'t have context yet. Pay attention to patterns in what they save.'}
 
 ## Previous Digest Context
 ${previousContext}
@@ -156,7 +156,7 @@ export function estimateDuration(script: string): number {
   return Math.ceil(minutes * 60) // Return seconds
 }
 
-// Update Imogen's context/memory about a user after a digest
+// Update Molly's context/memory about a user after a digest
 export async function updateUserContext(
   currentContext: string | null,
   items: DigestItem[],

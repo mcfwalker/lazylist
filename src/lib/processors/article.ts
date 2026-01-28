@@ -16,7 +16,7 @@ export async function processArticle(url: string): Promise<ArticleMetadata | nul
   try {
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; LazyList/0.1; +https://lazylist.mcfw.io)',
+        'User-Agent': 'Mozilla/5.0 (compatible; MollyMemo/0.1; +https://mollymemo.com)',
         Accept: 'text/html,application/xhtml+xml',
       },
     })
