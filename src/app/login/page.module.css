@@ -38,7 +38,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
+  object-position: center 20%;
   display: block;
 }
 
@@ -166,7 +166,7 @@
 
   .photoSection {
     width: 100%;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 4 / 3;
   }
 
   .formSection {
@@ -181,6 +181,10 @@
 
   .branding {
     bottom: 20px;
-    font-size: 16px;
+  }
+
+  .brandingIcon {
+    width: 40px;
+    height: 40px;
   }
 }
