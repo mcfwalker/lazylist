@@ -79,12 +79,12 @@ ${transcript.slice(0, 3000)}`
   }
 }
 
-// Search GitHub for a repo and return full metadata
-// Tries multiple search strategies: name+context first, then name only
-export async function searchGitHubRepo(
+// Search GitHub and return multiple candidates for LLM selection
+export async function searchGitHubRepoCandidates(
   name: string,
-  context: string = ''
-): Promise<GitHubRepoInfo | null> {
+  context: string = '',
+  maxResults: number = 5
+): Promise<GitHubRepoInfo[]> {
   const token = process.env.GITHUB_TOKEN
   const headers: Record<string, string> = {
     'Accept': 'application/vnd.github.v3+json',
@@ -94,16 +94,17 @@ export async function searchGitHubRepo(
     headers['Authorization'] = `Bearer ${token}`
   }
 
+  const candidates: GitHubRepoInfo[] = []
+  const seenFullNames = new Set<string>()
+
   // Build search queries - try multiple strategies
-  // 1. exact name match (highest priority - finds repos named exactly this)
-  // 2. name + context (specific search)
-  // 3. just context (catches misspelled names)
-  // 4. just name (fallback)
   const queries = context
-    ? [`${name} in:name`, `${name} ${context}`, context, name]
+    ? [`${name} in:name`, `${name} ${context}`, name]
     : [`${name} in:name`, name]
 
   for (const query of queries) {
+    if (candidates.length >= maxResults) break
+
     try {
       console.log(`GitHub search: "${query}"`)
       const response = await fetch(
@@ -118,19 +119,19 @@ export async function searchGitHubRepo(
 
       const data = await response.json()
       if (data.items && data.items.length > 0) {
-        // Return the best match (highest stars among results)
-        const sorted = data.items.sort(
-          (a: { stargazers_count: number }, b: { stargazers_count: number }) =>
-            b.stargazers_count - a.stargazers_count
-        )
-        const repo = sorted[0]
-        return {
-          url: repo.html_url,
-          name: repo.name,
-          fullName: repo.full_name,
-          description: repo.description,
-          stars: repo.stargazers_count,
-          topics: repo.topics || [],
+        for (const repo of data.items) {
+          if (candidates.length >= maxResults) break
+          if (seenFullNames.has(repo.full_name)) continue
+
+          seenFullNames.add(repo.full_name)
+          candidates.push({
+            url: repo.html_url,
+            name: repo.name,
+            fullName: repo.full_name,
+            description: repo.description,
+            stars: repo.stargazers_count,
+            topics: repo.topics || [],
+          })
         }
       }
     } catch (error) {
@@ -138,7 +139,94 @@ export async function searchGitHubRepo(
     }
   }
 
-  return null
+  return candidates
+}
+
+// LLM selects the best matching repo from candidates based on context
+export async function selectBestRepo(
+  candidates: GitHubRepoInfo[],
+  context: string,
+  apiKey: string
+): Promise<GitHubRepoInfo | null> {
+  if (candidates.length === 0) return null
+  if (candidates.length === 1) {
+    // Still validate single candidate
+    const isMatch = await validateRepoMatch(context, '', candidates[0], apiKey)
+    return isMatch ? candidates[0] : null
+  }
+
+  try {
+    const repoList = candidates.map((repo, i) =>
+      `${i + 1}. ${repo.fullName} (${repo.stars.toLocaleString()} stars)\n   Description: ${repo.description || 'No description'}\n   Topics: ${repo.topics.join(', ') || 'None'}`
+    ).join('\n\n')
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{
+          role: 'user',
+          content: `Which GitHub repository best matches what's described in this context?
+
+Context:
+${context.slice(0, 2000)}
+
+Candidate repositories:
+${repoList}
+
+Instructions:
+- Select the repository that best matches what's being discussed
+- Consider: Does the description match? Is the functionality aligned? Is it a well-known project?
+- If NONE of the repositories match what's described, respond with "0"
+- Otherwise, respond with ONLY the number (1-${candidates.length}) of the best match`
+        }],
+        temperature: 0,
+        max_tokens: 10,
+      }),
+    })
+
+    if (!response.ok) {
+      console.error('LLM selection error:', response.status)
+      return null
+    }
+
+    const data = await response.json()
+    const answer = data.choices?.[0]?.message?.content?.trim() || '0'
+    const selection = parseInt(answer, 10)
+
+    console.log(`LLM selected repo: ${answer} from ${candidates.length} candidates`)
+
+    if (selection >= 1 && selection <= candidates.length) {
+      return candidates[selection - 1]
+    }
+
+    return null
+  } catch (error) {
+    console.error('LLM selection error:', error)
+    return null
+  }
+}
+
+// Legacy wrapper for compatibility - uses new LLM selection
+export async function searchGitHubRepo(
+  name: string,
+  context: string = ''
+): Promise<GitHubRepoInfo | null> {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    console.error('OPENAI_API_KEY not configured for repo selection')
+    return null
+  }
+
+  const candidates = await searchGitHubRepoCandidates(name, context)
+  if (candidates.length === 0) return null
+
+  const searchContext = context ? `Looking for: ${name} - ${context}` : `Looking for: ${name}`
+  return selectBestRepo(candidates, searchContext, apiKey)
 }
 
 // Validate if a GitHub repo matches what's described in the transcript
@@ -211,40 +299,40 @@ export async function extractReposFromSummary(
     return []
   }
 
-  // Combine title and summary for search
-  const searchQuery = `${title} ${summary}`
-  console.log('Second pass repo search with summary:', searchQuery.slice(0, 100))
+  console.log('Second pass repo search with summary:', `${title} ${summary}`.slice(0, 100))
 
-  // Search GitHub directly with the summary
-  const repo = await searchGitHubRepo(title, summary)
-  if (!repo) {
-    console.log('No repo found in second pass')
+  // Get multiple candidates from GitHub
+  const candidates = await searchGitHubRepoCandidates(title, summary, 5)
+  if (candidates.length === 0) {
+    console.log('No repo candidates found in second pass')
     return []
   }
 
-  // Skip if already extracted
-  if (existingRepoUrls.some(url => url.includes(repo.fullName))) {
-    console.log(`Skipping ${repo.fullName} - already extracted`)
-    return []
-  }
-
-  // Validate: does this repo match what the summary describes?
-  const isMatch = await validateRepoMatch(
-    `Title: ${title}\nSummary: ${summary}`,
-    title,
-    repo,
-    apiKey
+  // Filter out already extracted repos
+  const newCandidates = candidates.filter(
+    c => !existingRepoUrls.some(url => url.includes(c.fullName))
   )
-  console.log(`Second pass validation for ${title} -> ${repo.fullName}: ${isMatch}`)
-
-  if (isMatch) {
-    return [repo]
+  if (newCandidates.length === 0) {
+    console.log('All candidates already extracted')
+    return []
   }
 
+  console.log(`Second pass found ${newCandidates.length} candidates:`, newCandidates.map(c => c.fullName))
+
+  // LLM selects the best match based on context
+  const context = `Title: ${title}\nDescription: ${summary}`
+  const selected = await selectBestRepo(newCandidates, context, apiKey)
+
+  if (selected) {
+    console.log(`Second pass selected: ${selected.fullName}`)
+    return [selected]
+  }
+
+  console.log('Second pass: LLM found no matching repo')
   return []
 }
 
-// Main function: extract repos from transcript with validation
+// Main function: extract repos from transcript with LLM selection
 export async function extractReposFromTranscript(
   transcript: string,
   existingRepoUrls: string[] = []
@@ -265,23 +353,26 @@ export async function extractReposFromTranscript(
 
   const validatedRepos: GitHubRepoInfo[] = []
 
-  // Search and validate each candidate (limit to 5)
+  // Search and select best repo for each candidate (limit to 5)
   for (const candidate of candidates.slice(0, 5)) {
-    const repo = await searchGitHubRepo(candidate.name, candidate.context)
-    if (repo) {
-      // Skip if we already have this repo
-      if (existingRepoUrls.some(url => url.includes(repo.fullName))) {
-        console.log(`Skipping ${repo.fullName} - already extracted`)
-        continue
-      }
+    // Get multiple GitHub candidates
+    const githubCandidates = await searchGitHubRepoCandidates(candidate.name, candidate.context, 5)
 
-      // Validate that this repo matches the transcript context
-      const isMatch = await validateRepoMatch(transcript, candidate.name, repo, apiKey)
-      console.log(`Repo validation for ${candidate.name} -> ${repo.fullName}: ${isMatch}`)
+    // Filter out already extracted repos
+    const newCandidates = githubCandidates.filter(
+      c => !existingRepoUrls.some(url => url.includes(c.fullName)) &&
+           !validatedRepos.some(r => r.fullName === c.fullName)
+    )
 
-      if (isMatch) {
-        validatedRepos.push(repo)
-      }
+    if (newCandidates.length === 0) continue
+
+    // LLM selects the best match
+    const context = `Transcript mentioning "${candidate.name}":\n${transcript.slice(0, 1500)}\n\nLooking for: ${candidate.name} - ${candidate.context}`
+    const selected = await selectBestRepo(newCandidates, context, apiKey)
+
+    if (selected) {
+      console.log(`Selected ${selected.fullName} for candidate "${candidate.name}"`)
+      validatedRepos.push(selected)
     }
   }
 

@@ -216,10 +216,8 @@ export async function processItem(itemId: string): Promise<void> {
       for (const repo of summaryRepos.slice(0, 3)) {
         const gh = await processGitHub(repo.url)
         if (gh) {
-          console.log('DEBUG: Before push, repos:', extractedEntities.repos)
-          console.log('DEBUG: repo.url:', repo.url)
           extractedEntities.repos?.push(repo.url)
-          console.log('DEBUG: After push, repos:', extractedEntities.repos)
+          console.log('Second pass: added repo', repo.url)
           if (!githubMetadata) {
             githubMetadata = gh
           }
@@ -264,8 +262,6 @@ export async function processItem(itemId: string): Promise<void> {
       updates.tags = classification.tags
     }
 
-    console.log('DEBUG: Final extractedEntities.repos:', extractedEntities.repos)
-    console.log('DEBUG: githubMetadata exists:', !!githubMetadata)
     if (githubMetadata) {
       // For GitHub source items, use the source URL
       // For other sources (TikTok, X, etc.), use the first extracted repo URL
@@ -273,9 +269,7 @@ export async function processItem(itemId: string): Promise<void> {
         updates.github_url = item.source_url
       } else if (extractedEntities.repos && extractedEntities.repos.length > 0) {
         updates.github_url = extractedEntities.repos[0]
-        console.log('DEBUG: Setting github_url to:', updates.github_url)
-      } else {
-        console.log('DEBUG: NOT setting github_url - repos empty or undefined')
+        console.log('Setting github_url:', updates.github_url)
       }
       updates.github_metadata = {
         stars: githubMetadata.stars,
