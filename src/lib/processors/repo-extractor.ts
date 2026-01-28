@@ -10,11 +10,16 @@ export interface GitHubRepoInfo {
   topics: string[]
 }
 
-// Extract tool/project names that might be GitHub repos
+export interface CandidateRepo {
+  name: string
+  context: string // e.g., "React terminal UI library"
+}
+
+// Extract tool/project names with context that might be GitHub repos
 export async function extractCandidateNames(
   transcript: string,
   apiKey: string
-): Promise<string[]> {
+): Promise<CandidateRepo[]> {
   try {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -31,15 +36,19 @@ export async function extractCandidateNames(
 Rules:
 - Include specific tool/project names (e.g., "repeater", "sharp", "ffmpeg", "clawdbot", "claudebot")
 - Include names that sound like project names even with slight misspellings
+- For each name, include 2-4 keywords describing what it does (for better GitHub search)
 - Do NOT include well-known commercial services (e.g., "ChatGPT", "Figma", "Notion", "AWS", "Discord", "Telegram", "WhatsApp")
 - Do NOT include generic terms (e.g., "terminal", "algorithm", "app", "bot")
-- Return ONLY a JSON array of names. If none found, return [].
+- Return a JSON array of objects with "name" and "context" fields. If none found, return [].
+
+Example output:
+[{"name": "ink", "context": "React terminal CLI components"}, {"name": "sharp", "context": "image processing Node.js"}]
 
 Transcript:
 ${transcript.slice(0, 3000)}`
         }],
         temperature: 0,
-        max_tokens: 200,
+        max_tokens: 300,
       }),
     })
 
@@ -51,7 +60,16 @@ ${transcript.slice(0, 3000)}`
     const data = await response.json()
     const text = data.choices?.[0]?.message?.content?.trim() || '[]'
     const jsonStr = text.replace(/```json\n?|\n?```/g, '').trim()
-    return JSON.parse(jsonStr)
+    const parsed = JSON.parse(jsonStr)
+
+    // Handle both old format (string[]) and new format (CandidateRepo[])
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      if (typeof parsed[0] === 'string') {
+        return parsed.map((name: string) => ({ name, context: '' }))
+      }
+      return parsed
+    }
+    return []
   } catch (error) {
     console.error('Candidate name extraction error:', error)
     return []
@@ -59,44 +77,61 @@ ${transcript.slice(0, 3000)}`
 }
 
 // Search GitHub for a repo and return full metadata
-export async function searchGitHubRepo(query: string): Promise<GitHubRepoInfo | null> {
-  try {
-    const token = process.env.GITHUB_TOKEN
-    const headers: Record<string, string> = {
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'LazyList',
-    }
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-
-    const response = await fetch(
-      `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=1`,
-      { headers }
-    )
-
-    if (!response.ok) {
-      console.error('GitHub search error:', response.status)
-      return null
-    }
-
-    const data = await response.json()
-    if (data.items && data.items.length > 0) {
-      const repo = data.items[0]
-      return {
-        url: repo.html_url,
-        name: repo.name,
-        fullName: repo.full_name,
-        description: repo.description,
-        stars: repo.stargazers_count,
-        topics: repo.topics || [],
-      }
-    }
-    return null
-  } catch (error) {
-    console.error('GitHub search error:', error)
-    return null
+// Tries multiple search strategies: name+context first, then name only
+export async function searchGitHubRepo(
+  name: string,
+  context: string = ''
+): Promise<GitHubRepoInfo | null> {
+  const token = process.env.GITHUB_TOKEN
+  const headers: Record<string, string> = {
+    'Accept': 'application/vnd.github.v3+json',
+    'User-Agent': 'LazyList',
   }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  // Build search queries - try with context first, then name only
+  const queries = context
+    ? [`${name} ${context}`, name]
+    : [name]
+
+  for (const query of queries) {
+    try {
+      console.log(`GitHub search: "${query}"`)
+      const response = await fetch(
+        `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=10&sort=stars&order=desc`,
+        { headers }
+      )
+
+      if (!response.ok) {
+        console.error('GitHub search error:', response.status)
+        continue
+      }
+
+      const data = await response.json()
+      if (data.items && data.items.length > 0) {
+        // Return the best match (highest stars among results)
+        const sorted = data.items.sort(
+          (a: { stargazers_count: number }, b: { stargazers_count: number }) =>
+            b.stargazers_count - a.stargazers_count
+        )
+        const repo = sorted[0]
+        return {
+          url: repo.html_url,
+          name: repo.name,
+          fullName: repo.full_name,
+          description: repo.description,
+          stars: repo.stargazers_count,
+          topics: repo.topics || [],
+        }
+      }
+    } catch (error) {
+      console.error('GitHub search error:', error)
+    }
+  }
+
+  return null
 }
 
 // Validate if a GitHub repo matches what's described in the transcript
@@ -167,19 +202,19 @@ export async function extractReposFromTranscript(
     return []
   }
 
-  // Extract candidate names
-  const candidateNames = await extractCandidateNames(transcript, apiKey)
-  console.log('Repo extraction candidates:', candidateNames)
+  // Extract candidate names with context
+  const candidates = await extractCandidateNames(transcript, apiKey)
+  console.log('Repo extraction candidates:', candidates)
 
-  if (candidateNames.length === 0) {
+  if (candidates.length === 0) {
     return []
   }
 
   const validatedRepos: GitHubRepoInfo[] = []
 
   // Search and validate each candidate (limit to 5)
-  for (const name of candidateNames.slice(0, 5)) {
-    const repo = await searchGitHubRepo(name)
+  for (const candidate of candidates.slice(0, 5)) {
+    const repo = await searchGitHubRepo(candidate.name, candidate.context)
     if (repo) {
       // Skip if we already have this repo
       if (existingRepoUrls.some(url => url.includes(repo.fullName))) {
@@ -188,8 +223,8 @@ export async function extractReposFromTranscript(
       }
 
       // Validate that this repo matches the transcript context
-      const isMatch = await validateRepoMatch(transcript, name, repo, apiKey)
-      console.log(`Repo validation for ${name} -> ${repo.fullName}: ${isMatch}`)
+      const isMatch = await validateRepoMatch(transcript, candidate.name, repo, apiKey)
+      console.log(`Repo validation for ${candidate.name} -> ${repo.fullName}: ${isMatch}`)
 
       if (isMatch) {
         validatedRepos.push(repo)
