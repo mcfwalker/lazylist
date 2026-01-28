@@ -42,6 +42,7 @@
 .logo {
   height: 32px;
   width: auto;
+  color: var(--text);
 }
 
 .search {

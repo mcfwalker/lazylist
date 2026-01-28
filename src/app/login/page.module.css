@@ -66,6 +66,7 @@
   height: auto;
   align-self: center;
   margin-bottom: 8px;
+  color: var(--foreground);
 }
 
 /* Input fields */
