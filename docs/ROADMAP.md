@@ -15,6 +15,128 @@ Extract from YouTube URLs:
 
 ## Medium Priority
 
+### Molly's Memos (Proactive Discovery)
+**Complexity:** High
+
+Transform Molly from passive capture to proactive research assistant. She learns your interests from captured links, then actively searches for related content you'd care about.
+
+**Core Concept:**
+- **List tab** - Your captures (existing)
+- **Memos tab** - Molly's discoveries (new)
+- **Digest enhancement** - First half: recap of your captures. Second half: "I also found these..."
+
+**Interest Graph:**
+
+Build from captured items:
+```
+user_interests:
+  - id, user_id, interest_type, value, weight, last_seen
+
+Examples:
+  - (user_1, 'domain', 'vibe-coding', 0.8, now)
+  - (user_1, 'tool', 'cursor', 0.6, now)
+  - (user_1, 'topic', 'react-three-fiber', 0.9, now)
+  - (user_1, 'person', '@levelsio', 0.5, now)
+```
+
+Extract from:
+- `domain` field (vibe-coding, ai-filmmaking)
+- `tags` array
+- `extracted_entities` (repos, tools, techniques)
+- Mentioned people/accounts
+- Weight by recency and frequency
+
+**Proactive Search Sources:**
+
+| Source | Method | Rate Limit |
+|--------|--------|------------|
+| Reddit | Pushshift API or Reddit API | Moderate |
+| X/Twitter | Grok API (already have) | Per-user |
+| Hacker News | Algolia API (free) | Generous |
+| GitHub Trending | Scrape or API | Daily |
+| Product Hunt | API | Daily |
+
+**Cron Job: `/api/cron/discover`**
+
+Run daily (after digest, or separate schedule):
+1. Load user's interest graph (top 10 weighted interests)
+2. Build search queries: `"cursor ai" site:reddit.com last 7 days`
+3. Fetch and dedupe against existing items
+4. AI filter: "Would this user find this valuable?" (Claude Haiku, cheap)
+5. Store as `memos` table with `source='molly'`
+
+**Data Model:**
+
+```sql
+-- Memos table (Molly's discoveries)
+CREATE TABLE memos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  source_url TEXT NOT NULL,
+  title TEXT,
+  summary TEXT,
+  relevance_reason TEXT,  -- "Because you've saved 3 React Three Fiber repos"
+  interest_match JSONB,   -- Which interests triggered this
+  status TEXT DEFAULT 'pending',  -- pending, shown, dismissed, captured
+  discovered_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Interest graph
+CREATE TABLE user_interests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES users(id),
+  interest_type TEXT NOT NULL,  -- domain, tool, topic, person, repo
+  value TEXT NOT NULL,
+  weight DECIMAL DEFAULT 0.5,
+  occurrence_count INT DEFAULT 1,
+  first_seen TIMESTAMPTZ DEFAULT now(),
+  last_seen TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, interest_type, value)
+);
+```
+
+**UI: Memos Tab**
+
+```
+/memos (or toggle on main page)
+
+[Card]
+  "New R3F camera controller library"
+  reddit.com/r/threejs • 2 hours ago
+
+  Because you saved 3 React Three Fiber items
+
+  [Capture] [Dismiss]
+```
+
+**Digest Integration:**
+
+```
+Molly's voice digest script:
+
+"...and that's your recap for today.
+
+I also found a few things you might like. There's a new
+Cursor extension for React that's getting attention on
+Reddit. And someone posted a Three.js camera rig that
+looks similar to that qwkshot project you're working on.
+
+Check the Memos tab if you want to capture any of these."
+```
+
+**Inspiration:** [last30days-skill](https://github.com/mvanhorn/last30days-skill) - scrapes Reddit + X for recent discussions
+
+**Implementation Order:**
+1. Interest graph extraction (run on each capture)
+2. `memos` table + basic API
+3. Memos tab UI
+4. Single source (HN Algolia - easiest)
+5. AI relevance filtering
+6. Digest integration
+7. Additional sources (Reddit, X, GitHub)
+
+---
+
 ### RAG-Powered Memory
 **Complexity:** High
 
