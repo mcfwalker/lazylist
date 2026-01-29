@@ -73,6 +73,7 @@ describe('ItemCard', () => {
     onToggleExpand: vi.fn(),
     onUpdate: vi.fn(),
     onDelete: vi.fn(),
+    onRetry: vi.fn(),
   }
 
   it('renders item title', () => {

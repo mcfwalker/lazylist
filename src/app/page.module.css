@@ -383,3 +383,19 @@
   background: var(--error);
   color: white;
 }
+
+.retryBtn {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.retryBtn:hover {
+  background: var(--accent);
+  color: white;
+}

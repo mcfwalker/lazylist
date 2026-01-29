@@ -106,6 +106,21 @@ export default function Home() {
     }
   }
 
+  const retryItem = async (id: string) => {
+    try {
+      const res = await fetch(`/api/items/${id}`, { method: 'POST' })
+      if (res.ok) {
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, status: 'pending', error_message: null } : item
+          )
+        )
+      }
+    } catch (err) {
+      console.error('Retry error:', err)
+    }
+  }
+
   return (
     <main className={styles.main}>
       <header className={styles.header}>
@@ -177,6 +192,7 @@ export default function Home() {
               onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
               onUpdate={updateItem}
               onDelete={deleteItem}
+              onRetry={retryItem}
             />
           ))
         )}

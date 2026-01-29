@@ -9,6 +9,7 @@ interface ItemCardProps {
   onToggleExpand: () => void
   onUpdate: (id: string, updates: Partial<Item>) => void
   onDelete: (id: string) => void
+  onRetry: (id: string) => void
 }
 
 function formatDate(dateStr: string) {
@@ -24,7 +25,7 @@ function formatDate(dateStr: string) {
   return date.toLocaleDateString()
 }
 
-export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete }: ItemCardProps) {
+export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete, onRetry }: ItemCardProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
 
@@ -162,6 +163,17 @@ export function ItemCard({ item, isExpanded, onToggleExpand, onUpdate, onDelete 
             </div>
           )}
           <div className={styles.cardActions}>
+            {item.status === 'failed' && (
+              <button
+                className={styles.retryBtn}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRetry(item.id)
+                }}
+              >
+                Retry
+              </button>
+            )}
             <button
               className={styles.deleteBtn}
               onClick={(e) => {
