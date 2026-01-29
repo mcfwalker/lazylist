@@ -18,6 +18,17 @@ interface SourceCost {
   avgCost: number
 }
 
+interface UserCost {
+  id: string
+  email: string
+  displayName: string | null
+  itemCount: number
+  digestCount: number
+  itemCost: number
+  digestCost: number
+  totalCost: number
+}
+
 interface MonthData {
   month: string
   itemCount: number
@@ -46,6 +57,7 @@ interface DashboardData {
   }
   byOperation: OperationCost[]
   bySource: SourceCost[]
+  byUser: UserCost[]
   monthly: MonthData[]
 }
 
@@ -73,7 +85,7 @@ function formatSourceName(source: string): string {
   return names[source] || source
 }
 
-export default function StatsPage() {
+export default function AdminStatsPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -81,15 +93,18 @@ export default function StatsPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch('/api/stats/dashboard')
+        const res = await fetch('/api/admin/stats/dashboard')
         if (!res.ok) {
+          if (res.status === 403) {
+            throw new Error('Access denied')
+          }
           throw new Error('Failed to fetch stats')
         }
         const dashboardData = await res.json()
         setData(dashboardData)
       } catch (err) {
         console.error('Error fetching stats:', err)
-        setError('Failed to load cost data')
+        setError(err instanceof Error ? err.message : 'Failed to load cost data')
       } finally {
         setLoading(false)
       }
@@ -130,7 +145,7 @@ export default function StatsPage() {
         <ThemeToggle />
       </header>
 
-      <h1 className={styles.title}>Cost Dashboard</h1>
+      <h1 className={styles.title}>Admin Dashboard</h1>
 
       {!hasData ? (
         <div className={styles.empty}>No cost data yet. Process some items to see stats.</div>
@@ -175,6 +190,39 @@ export default function StatsPage() {
               </div>
             </div>
           </section>
+
+          {/* By User */}
+          {data.byUser.length > 0 && (
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>Cost by User</h2>
+              <div className={styles.tableCard}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th className={styles.alignRight}>Items</th>
+                      <th className={styles.alignRight}>Digests</th>
+                      <th className={styles.alignRight}>Item Cost</th>
+                      <th className={styles.alignRight}>Digest Cost</th>
+                      <th className={styles.alignRight}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.byUser.map((user) => (
+                      <tr key={user.id}>
+                        <td>{user.displayName || user.email}</td>
+                        <td className={styles.alignRight}>{user.itemCount}</td>
+                        <td className={styles.alignRight}>{user.digestCount}</td>
+                        <td className={styles.alignRight}>{formatCurrency(user.itemCost)}</td>
+                        <td className={styles.alignRight}>{formatCurrency(user.digestCost)}</td>
+                        <td className={styles.alignRight}>{formatCurrency(user.totalCost)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
 
           {/* By Operation */}
           {data.byOperation.length > 0 && (
