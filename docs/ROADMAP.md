@@ -104,6 +104,18 @@ Observability for digest quality:
 
 ## Ideas
 
+### Knowledge Mindmap
+**Complexity:** Medium
+
+Visual mindmap of captured items using React Flow:
+- Center node: user or time period
+- Branch nodes: domains (vibe-coding, ai-filmmaking, etc.)
+- Leaf nodes: individual items
+- Connections: shared tags or extracted entities
+- Interactive: click to expand, filter by domain/type
+
+**Libraries:** [React Flow](https://reactflow.dev/learn/tutorials/mind-map-app-with-react-flow) (recommended), blink-mind-react
+
 ### Newsletter/Email Capture
 **Complexity:** High
 
