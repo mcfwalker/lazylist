@@ -64,11 +64,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  padding: 6px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: transparent;
+  border-radius: 6px;
+  background: var(--card);
   color: var(--text-muted);
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
@@ -77,8 +76,7 @@
 
 .iconButton:hover {
   color: var(--text);
-  border-color: var(--text-muted);
-  background: var(--bg-card);
+  background: var(--muted);
 }
 
 .filters {
@@ -101,7 +99,7 @@
 }
 
 .filters select {
-  padding: 8px 12px;
+  padding: 8px 24px 8px 12px;
   font-size: 13px;
   border: 1px solid var(--border);
   border-radius: 6px;
