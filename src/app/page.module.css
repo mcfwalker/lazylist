@@ -60,32 +60,25 @@
   border-color: var(--accent);
 }
 
-.settingsLink {
-  padding: 8px 12px;
-  font-size: 13px;
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: color 0.15s;
-}
-
-.settingsLink:hover {
-  color: var(--text);
-}
-
-.logout {
-  padding: 8px 12px;
-  font-size: 13px;
+.iconButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  text-decoration: none;
 }
 
-.logout:hover {
+.iconButton:hover {
   color: var(--text);
   border-color: var(--text-muted);
+  background: var(--bg-card);
 }
 
 .filters {
