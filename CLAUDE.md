@@ -13,6 +13,7 @@ Personal knowledge capture system. Share links from phone → auto-extract intel
 - **Frontend/API:** Next.js on Vercel
 - **Database:** Supabase (Postgres)
 - **AI:** OpenAI GPT-4o Mini (transcription, classification)
+- **Jobs:** Inngest (resilient background processing)
 
 ## Design Docs
 
