@@ -409,7 +409,76 @@ export const processItem = inngest.createFunction(
       }
     });
 
-    // Step 8: Notify user (if Telegram capture)
+    // Step 8: Extract and store interests
+    await step.run("extract-interests", async () => {
+      const { extractInterests, calculateWeight } = await import("@/lib/interests");
+
+      // Fetch the processed item
+      const { data: processed } = await supabase
+        .from("items")
+        .select("title, summary, tags, domain, github_url, user_id")
+        .eq("id", itemId)
+        .single();
+
+      if (!processed || !processed.title) {
+        console.log("Skipping interest extraction - no title");
+        return;
+      }
+
+      const result = await extractInterests({
+        title: processed.title,
+        summary: processed.summary,
+        tags: processed.tags,
+        domain: processed.domain,
+        github_url: processed.github_url,
+      });
+
+      if (!result || result.interests.length === 0) {
+        console.log("No interests extracted");
+        return;
+      }
+
+      // Upsert each interest
+      for (const interest of result.interests) {
+        const { data: existing } = await supabase
+          .from("user_interests")
+          .select("id, occurrence_count, first_seen")
+          .eq("user_id", processed.user_id)
+          .eq("interest_type", interest.type)
+          .eq("value", interest.value)
+          .single();
+
+        if (existing) {
+          // Update existing interest
+          const newCount = existing.occurrence_count + 1;
+          const weight = calculateWeight(newCount, new Date());
+
+          await supabase
+            .from("user_interests")
+            .update({
+              occurrence_count: newCount,
+              weight,
+              last_seen: new Date().toISOString(),
+            })
+            .eq("id", existing.id);
+        } else {
+          // Insert new interest
+          await supabase
+            .from("user_interests")
+            .insert({
+              user_id: processed.user_id,
+              interest_type: interest.type,
+              value: interest.value,
+              weight: 0.5,
+              occurrence_count: 1,
+            });
+        }
+      }
+
+      console.log(`Extracted ${result.interests.length} interests, cost: $${result.cost.toFixed(6)}`);
+    });
+
+    // Step 9: Notify user (if Telegram capture)
     if (chatId) {
       await step.run("notify-user", async () => {
         const { data: processed } = await supabase
