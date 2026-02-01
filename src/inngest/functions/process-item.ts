@@ -374,7 +374,42 @@ export const processItem = inngest.createFunction(
       await supabase.from("items").update(updates).eq("id", itemId);
     });
 
-    // Step 7: Notify user (if Telegram capture)
+    // Step 7: Generate embedding for semantic search
+    await step.run("generate-embedding", async () => {
+      const { embedItem } = await import("@/lib/embeddings");
+
+      // Fetch the processed item to get final title/summary/tags
+      const { data: processed } = await supabase
+        .from("items")
+        .select("title, summary, tags")
+        .eq("id", itemId)
+        .single();
+
+      if (!processed || !processed.title) {
+        console.log("Skipping embedding - no title");
+        return;
+      }
+
+      const result = await embedItem({
+        title: processed.title,
+        summary: processed.summary,
+        tags: processed.tags,
+      });
+
+      if (result) {
+        // Store embedding as array (Supabase pgvector accepts JSON array)
+        await supabase
+          .from("items")
+          .update({
+            embedding: result.embedding as unknown as string,
+          })
+          .eq("id", itemId);
+
+        console.log(`Embedded item ${itemId}, cost: $${result.cost.toFixed(6)}`);
+      }
+    });
+
+    // Step 8: Notify user (if Telegram capture)
     if (chatId) {
       await step.run("notify-user", async () => {
         const { data: processed } = await supabase
