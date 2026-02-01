@@ -2,7 +2,7 @@
 // Coordinates script generation, TTS, and delivery
 
 import { createServiceClient } from '@/lib/supabase'
-import { generateScript, estimateDuration, updateUserContext, DigestItem } from './generator'
+import { generateScript, estimateDuration, updateUserContext, DigestItem, MemoItem } from './generator'
 import { textToSpeech } from './tts'
 import { sendVoiceMessage, sendTextMessage } from './sender'
 import { EMPTY_DAY_SCRIPT } from './molly'
@@ -25,6 +25,9 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
 
   // 1. Get items from last 24 hours
   const items = await getItemsForDigest(user.id)
+
+  // 1b. Get pending memos (Molly's discoveries)
+  const memos = await getPendingMemos(user.id)
 
   if (items.length === 0) {
     // Send "nothing new" message
@@ -61,6 +64,7 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
       mollyContext: user.molly_context,
     },
     items,
+    memos,
     previousDigest,
   })
   anthropicCost += scriptCost
@@ -132,6 +136,12 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
   } catch (e) {
     console.error('Failed to update Molly context:', e)
     // Non-fatal, continue
+  }
+
+  // 8. Mark memos as shown
+  if (memos.length > 0) {
+    await markMemosAsShown(memos.map(m => m.id))
+    console.log(`Marked ${memos.length} memos as shown`)
   }
 }
 
@@ -236,4 +246,44 @@ export async function getUsersForDigestNow(): Promise<DigestUser[]> {
       return false
     }
   }) as DigestUser[]
+}
+
+// Get pending memos (Molly's discoveries) for a user
+async function getPendingMemos(userId: string): Promise<MemoItem[]> {
+  const supabase = createServiceClient()
+
+  const { data, error } = await supabase
+    .from('memos')
+    .select('id, title, summary, relevance_reason, source_platform, source_url')
+    .eq('user_id', userId)
+    .eq('status', 'pending')
+    .order('relevance_score', { ascending: false })
+    .limit(5) // Max 5 memos per digest
+
+  if (error) {
+    console.error('Error fetching pending memos:', error)
+    return []
+  }
+
+  return (data || []).map((memo) => ({
+    id: memo.id,
+    title: memo.title || 'Untitled',
+    summary: memo.summary || '',
+    relevanceReason: memo.relevance_reason || '',
+    sourcePlatform: memo.source_platform,
+    sourceUrl: memo.source_url,
+  }))
+}
+
+// Mark memos as shown after including in digest
+async function markMemosAsShown(memoIds: string[]): Promise<void> {
+  const supabase = createServiceClient()
+
+  await supabase
+    .from('memos')
+    .update({
+      status: 'shown',
+      shown_at: new Date().toISOString(),
+    })
+    .in('id', memoIds)
 }

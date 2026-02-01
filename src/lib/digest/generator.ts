@@ -26,6 +26,15 @@ export interface DigestItem {
   sourceUrl: string
 }
 
+export interface MemoItem {
+  id: string
+  title: string
+  summary: string
+  relevanceReason: string
+  sourcePlatform: string
+  sourceUrl: string
+}
+
 export interface DigestInput {
   user: {
     id: string
@@ -34,6 +43,7 @@ export interface DigestInput {
     mollyContext: string | null // Molly's evolving memory of this user
   }
   items: DigestItem[]
+  memos: MemoItem[] // Molly's proactive discoveries
   previousDigest: {
     id: string
     scriptText: string
@@ -43,7 +53,7 @@ export interface DigestInput {
 }
 
 export async function generateScript(input: DigestInput): Promise<{ script: string; cost: number }> {
-  const { user, items, previousDigest } = input
+  const { user, items, memos, previousDigest } = input
   const userName = user.displayName || 'there'
 
   // Build previous digest context
@@ -119,6 +129,19 @@ ${domainSummary}
 
 Full items:
 ${itemsJson}
+
+## Molly's Discoveries (${memos.length} items)
+${memos.length > 0 ? `I also found some things you might like based on your interests:
+${JSON.stringify(memos.map(m => ({
+  title: m.title,
+  summary: m.summary,
+  reason: m.relevanceReason,
+  platform: m.sourcePlatform,
+})), null, 2)}
+
+Weave these into the digest naturally after covering the user's captures.
+Say something like "I also found a few things you might like..." and briefly mention 2-3 of them.
+Keep it brief — these are suggestions, not the main content.` : 'No discoveries this time — I haven\'t found anything new matching their interests.'}
 
 Generate the script now. Output ONLY the script text, no preamble or meta-commentary.`
 
