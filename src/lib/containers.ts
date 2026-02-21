@@ -341,3 +341,66 @@ Return ONLY valid JSON, no markdown:
     return null
   }
 }
+
+export interface MergeExecution {
+  success: boolean
+  itemsMoved: number
+  error?: string
+}
+
+/**
+ * Execute a container merge: move all items from source to target, delete source.
+ * The trg_container_item_count trigger handles item_count sync automatically.
+ */
+export async function executeMerge(
+  supabase: ReturnType<typeof createServiceClient>,
+  merge: MergeSuggestion
+): Promise<MergeExecution> {
+  try {
+    // 1. Get all items in the source container
+    const { data: sourceItems, error: fetchError } = await supabase
+      .from('container_items')
+      .select('item_id')
+      .eq('container_id', merge.source)
+
+    if (fetchError) {
+      console.error('Failed to fetch source items:', fetchError)
+      return { success: false, itemsMoved: 0, error: fetchError.message }
+    }
+
+    const itemIds = sourceItems?.map(i => i.item_id) || []
+
+    // 2. Upsert items into target container (dedup via onConflict)
+    for (const itemId of itemIds) {
+      const { error } = await supabase
+        .from('container_items')
+        .upsert(
+          { container_id: merge.target, item_id: itemId },
+          { onConflict: 'container_id,item_id' }
+        )
+
+      if (error) {
+        console.error(`Failed to move item ${itemId}:`, error)
+      }
+    }
+
+    // 3. Delete source container (CASCADE deletes its container_items rows,
+    //    trigger decrements item_count on target for any dupes that were already there)
+    const { error: deleteError } = await supabase
+      .from('containers')
+      .delete()
+      .eq('id', merge.source)
+
+    if (deleteError) {
+      console.error('Failed to delete source container:', deleteError)
+      return { success: false, itemsMoved: itemIds.length, error: deleteError.message }
+    }
+
+    console.log(`Merged container ${merge.source} into ${merge.target}: ${itemIds.length} items moved. Reason: ${merge.reason}`)
+
+    return { success: true, itemsMoved: itemIds.length }
+  } catch (error) {
+    console.error('Merge execution error:', error)
+    return { success: false, itemsMoved: 0, error: String(error) }
+  }
+}

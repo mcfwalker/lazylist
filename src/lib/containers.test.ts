@@ -143,3 +143,63 @@ describe('suggestMerges', () => {
     expect(result!.merges[0].source).toBe('id-2')
   })
 })
+
+describe('executeMerge', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('moves items from source to target and deletes source', async () => {
+    // Mock supabase client with chained query builder
+    const mockFrom = vi.fn()
+    const supabase = { from: mockFrom } as any
+
+    // Mock: get source container items
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'container_items') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({
+              data: [
+                { item_id: 'item-1' },
+                { item_id: 'item-2' },
+              ],
+              error: null,
+            }),
+          }),
+          upsert: vi.fn().mockResolvedValue({ error: null }),
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }
+      }
+      if (table === 'containers') {
+        return {
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          }),
+        }
+      }
+      return {}
+    })
+
+    const { executeMerge } = await import('./containers')
+
+    const result = await executeMerge(supabase, {
+      source: 'source-id',
+      target: 'target-id',
+      reason: 'Overlap detected',
+    })
+
+    expect(result.itemsMoved).toBe(2)
+    expect(result.success).toBe(true)
+  })
+})
