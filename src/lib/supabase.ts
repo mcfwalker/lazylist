@@ -88,6 +88,37 @@ export interface Item {
   repo_extraction_cost: number | null
 }
 
+// Types for containers
+export interface Container {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  item_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ContainerItem {
+  container_id: string
+  item_id: string
+  added_at: string
+}
+
+// Types for project anchors
+export interface ProjectAnchor {
+  id: string
+  user_id: string
+  external_project_id: string
+  name: string
+  description: string | null
+  tags: string[]
+  stage: string | null
+  source: string
+  created_at: string
+  updated_at: string
+}
+
 // Cost statistics types
 export interface MonthStats {
   month: string // ISO date string of first day of month
