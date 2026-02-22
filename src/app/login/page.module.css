@@ -69,29 +69,6 @@
   color: var(--foreground);
 }
 
-/* Input fields */
-.input {
-  padding: 14px 20px;
-  font-size: 15px;
-  font-family: inherit;
-  letter-spacing: 0.01em;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--background);
-  color: var(--foreground);
-  text-align: center;
-  transition: border-color 0.15s ease;
-}
-
-.input:focus {
-  outline: none;
-  border-color: var(--ring);
-}
-
-.input::placeholder {
-  color: var(--muted-foreground);
-}
-
 /* Button */
 .button {
   padding: 14px 20px;
@@ -135,14 +112,6 @@
   padding: 0 12px;
 }
 
-.success {
-  color: var(--success);
-  font-size: 14px;
-  text-align: center;
-  margin: 0;
-  padding: 8px 0;
-}
-
 /* Branding */
 .branding {
   position: fixed;
@@ -180,7 +149,6 @@
     padding: 16px 12px;
   }
 
-  .input,
   .button {
     padding: 12px 18px;
     font-size: 14px;

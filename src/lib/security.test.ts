@@ -1,54 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { checkRateLimit, sanitizeSearchInput } from './security'
-
-describe('checkRateLimit', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('allows first request', () => {
-    const result = checkRateLimit('test-key-1', 5, 60000)
-    expect(result.allowed).toBe(true)
-    expect(result.remaining).toBe(4)
-  })
-
-  it('tracks multiple requests within window', () => {
-    const key = 'test-key-2'
-    checkRateLimit(key, 5, 60000)
-    checkRateLimit(key, 5, 60000)
-    const result = checkRateLimit(key, 5, 60000)
-    expect(result.allowed).toBe(true)
-    expect(result.remaining).toBe(2)
-  })
-
-  it('blocks requests after limit reached', () => {
-    const key = 'test-key-3'
-    for (let i = 0; i < 5; i++) {
-      checkRateLimit(key, 5, 60000)
-    }
-    const result = checkRateLimit(key, 5, 60000)
-    expect(result.allowed).toBe(false)
-    expect(result.remaining).toBe(0)
-  })
-
-  it('resets after window expires', () => {
-    const key = 'test-key-4'
-    for (let i = 0; i < 5; i++) {
-      checkRateLimit(key, 5, 60000)
-    }
-
-    // Advance time past the window
-    vi.advanceTimersByTime(61000)
-
-    const result = checkRateLimit(key, 5, 60000)
-    expect(result.allowed).toBe(true)
-    expect(result.remaining).toBe(4)
-  })
-})
+import { describe, it, expect } from 'vitest'
+import { sanitizeSearchInput } from './security'
 
 describe('sanitizeSearchInput', () => {
   it('passes through normal text', () => {
