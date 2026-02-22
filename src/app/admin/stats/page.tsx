@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import styles from './page.module.css'
 
 interface OperationCost {
@@ -115,10 +113,6 @@ export default function AdminStatsPage() {
   if (loading) {
     return (
       <main className={styles.main}>
-        <header className={styles.header}>
-          <Link href="/" className={styles.backLink}>&larr; Back to List</Link>
-          <ThemeToggle />
-        </header>
         <div className={styles.loading}>Loading cost data...</div>
       </main>
     )
@@ -127,10 +121,6 @@ export default function AdminStatsPage() {
   if (error || !data) {
     return (
       <main className={styles.main}>
-        <header className={styles.header}>
-          <Link href="/" className={styles.backLink}>&larr; Back to List</Link>
-          <ThemeToggle />
-        </header>
         <div className={styles.empty}>{error || 'No data available'}</div>
       </main>
     )
@@ -140,11 +130,6 @@ export default function AdminStatsPage() {
 
   return (
     <main className={styles.main}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.backLink}>&larr; Back to List</Link>
-        <ThemeToggle />
-      </header>
-
       <h1 className={styles.title}>Admin Dashboard</h1>
 
       {!hasData ? (
