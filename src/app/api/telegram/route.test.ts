@@ -38,11 +38,13 @@ const TEST_USER = {
   id: 'test-user-uuid',
   email: 'test@example.com',
   display_name: 'Test',
-  digest_enabled: true,
+  digest_frequency: 'daily',
+  digest_day: 1,
   digest_time: '07:00',
   timezone: 'America/Los_Angeles',
   telegram_user_id: 123456,
   telegram_welcome_sent: true,
+  molly_context: null,
 }
 const TEST_WEBHOOK_SECRET = 'test-webhook-secret-123'
 

@@ -110,43 +110,69 @@ export default function SettingsPage() {
       <h1 className={styles.title}>Settings</h1>
 
       <section className={styles.section}>
-        <h2 className={styles.sectionTitle}>Daily Digest</h2>
+        <h2 className={styles.sectionTitle}>Voice Digest</h2>
 
         <div className={styles.settingCard}>
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
-              <span className={styles.settingLabel}>Enable daily digest</span>
+              <span className={styles.settingLabel}>Digest frequency</span>
               <span className={styles.settingDescription}>
-                Receive a voice summary of your captured items
+                How often Molly sends your voice digest
               </span>
             </div>
-            <label className={styles.toggle}>
-              <input
-                type="checkbox"
-                checked={settings.digest_enabled}
-                onChange={(e) =>
-                  updateSetting({ digest_enabled: e.target.checked })
-                }
-                disabled={saving}
-              />
-              <span className={styles.toggleSlider}></span>
-            </label>
+            <select
+              value={settings.digest_frequency}
+              onChange={(e) => updateSetting({ digest_frequency: e.target.value })}
+              disabled={saving}
+              className={styles.select}
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="never">Never</option>
+            </select>
           </div>
         </div>
+
+        {settings.digest_frequency === 'weekly' && (
+          <div className={styles.settingCard}>
+            <div className={styles.settingRow}>
+              <div className={styles.settingInfo}>
+                <span className={styles.settingLabel}>Digest day</span>
+                <span className={styles.settingDescription}>
+                  Which day to receive your weekly digest
+                </span>
+              </div>
+              <select
+                value={settings.digest_day}
+                onChange={(e) => updateSetting({ digest_day: Number(e.target.value) })}
+                disabled={saving}
+                className={styles.select}
+              >
+                <option value={0}>Sunday</option>
+                <option value={1}>Monday</option>
+                <option value={2}>Tuesday</option>
+                <option value={3}>Wednesday</option>
+                <option value={4}>Thursday</option>
+                <option value={5}>Friday</option>
+                <option value={6}>Saturday</option>
+              </select>
+            </div>
+          </div>
+        )}
 
         <div className={styles.settingCard}>
           <div className={styles.settingRow}>
             <div className={styles.settingInfo}>
               <span className={styles.settingLabel}>Delivery time</span>
               <span className={styles.settingDescription}>
-                When to send your daily digest
+                When to send your digest
               </span>
             </div>
             <input
               type="time"
               value={settings.digest_time}
               onChange={(e) => updateSetting({ digest_time: e.target.value })}
-              disabled={saving || !settings.digest_enabled}
+              disabled={saving || settings.digest_frequency === 'never'}
               className={styles.timeInput}
             />
           </div>

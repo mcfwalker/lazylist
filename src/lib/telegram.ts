@@ -6,7 +6,8 @@ export interface TelegramUser {
   id: string
   email: string
   display_name: string | null
-  digest_enabled: boolean
+  digest_frequency: string
+  digest_day: number
   digest_time: string
   timezone: string
   telegram_user_id: number
@@ -22,7 +23,7 @@ export async function getUserByTelegramId(
   const { data, error } = await supabase
     .from('users')
     .select(
-      'id, email, display_name, digest_enabled, digest_time, timezone, telegram_user_id, telegram_welcome_sent, molly_context'
+      'id, email, display_name, digest_frequency, digest_day, digest_time, timezone, telegram_user_id, telegram_welcome_sent, molly_context'
     )
     .eq('telegram_user_id', telegramUserId)
     .single()
@@ -33,7 +34,8 @@ export async function getUserByTelegramId(
 
   return {
     ...data,
-    digest_enabled: data.digest_enabled ?? true,
+    digest_frequency: data.digest_frequency ?? 'daily',
+    digest_day: data.digest_day ?? 1,
     digest_time: data.digest_time ?? '07:00',
     timezone: data.timezone ?? 'America/Los_Angeles',
     telegram_welcome_sent: data.telegram_welcome_sent ?? false,

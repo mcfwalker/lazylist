@@ -57,7 +57,7 @@ async function handleDigestCommand(
       if (command.time) {
         await supabase
           .from('users')
-          .update({ digest_time: command.time, digest_enabled: true })
+          .update({ digest_time: command.time, digest_frequency: 'daily' })
           .eq('id', user.id)
 
         const friendly = formatTimeForUser(command.time, user.timezone)
@@ -68,7 +68,7 @@ async function handleDigestCommand(
     case 'enable': {
       await supabase
         .from('users')
-        .update({ digest_enabled: true })
+        .update({ digest_frequency: 'daily' })
         .eq('id', user.id)
 
       const enableTime = formatTimeForUser(
@@ -82,7 +82,7 @@ async function handleDigestCommand(
     case 'disable':
       await supabase
         .from('users')
-        .update({ digest_enabled: false })
+        .update({ digest_frequency: 'never' })
         .eq('id', user.id)
 
       await sendMessage(
@@ -92,7 +92,7 @@ async function handleDigestCommand(
       break
 
     case 'query':
-      if (user.digest_enabled) {
+      if (user.digest_frequency !== 'never') {
         const queryTime = formatTimeForUser(
           user.digest_time || '07:00',
           user.timezone
@@ -198,7 +198,8 @@ export async function POST(request: NextRequest) {
                 id: user.id,
                 display_name: user.display_name,
                 telegram_user_id: user.telegram_user_id,
-                digest_enabled: true,
+                digest_frequency: user.digest_frequency || 'daily',
+                digest_day: user.digest_day ?? 1,
                 digest_time: user.digest_time || '07:00',
                 timezone: user.timezone || 'America/Los_Angeles',
                 molly_context: user.molly_context,
