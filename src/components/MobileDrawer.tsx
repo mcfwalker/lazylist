@@ -36,8 +36,6 @@ export function MobileDrawer({ isAdmin, onLogout }: MobileDrawerProps) {
       </div>
 
       {open && (
-        <>
-          <div className={styles.backdrop} onClick={() => setOpen(false)} />
           <div className={styles.drawer}>
             <div className={styles.drawerHeader}>
               <svg className={styles.logo} viewBox="0 0 196 96" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -125,7 +123,6 @@ export function MobileDrawer({ isAdmin, onLogout }: MobileDrawerProps) {
               </button>
             </div>
           </div>
-        </>
       )}
     </>
   )
