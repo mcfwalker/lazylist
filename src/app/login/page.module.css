@@ -120,6 +120,13 @@
   cursor: not-allowed;
 }
 
+.googleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
 .error {
   color: var(--destructive);
   font-size: 13px;

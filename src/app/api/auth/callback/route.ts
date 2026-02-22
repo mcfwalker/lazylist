@@ -1,8 +1,9 @@
 /**
  * Auth Callback Route
  *
- * Handles the redirect from Supabase magic link authentication.
- * Exchanges the auth code for a session and redirects to the app.
+ * Handles the redirect from Supabase OAuth authentication.
+ * Exchanges the auth code for a session, enforces email allowlist,
+ * and redirects to the app.
  *
  * GET /api/auth/callback?code=xxx - Exchange code for session
  */
@@ -10,12 +11,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-/**
- * Exchange the magic link auth code for a session.
- *
- * @param request - Contains code parameter from Supabase
- * @returns Redirect to home (success) or login page (failure)
- */
+const allowedEmails = (process.env.ALLOWED_EMAILS || '')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean)
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const code = searchParams.get('code')
@@ -38,8 +38,7 @@ export async function GET(request: NextRequest) {
                 cookieStore.set(name, value, options)
               })
             } catch {
-              // The `setAll` method was called from a Server Component.
-              // This can be ignored if you have middleware refreshing sessions.
+              // Can be ignored if middleware refreshes sessions.
             }
           },
         },
@@ -49,11 +48,17 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      // Successful auth - redirect to home or original destination
+      // Enforce email allowlist
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (!user?.email || !allowedEmails.includes(user.email.toLowerCase())) {
+        await supabase.auth.signOut()
+        return NextResponse.redirect(`${origin}/login?error=not_allowed`)
+      }
+
       return NextResponse.redirect(`${origin}${next}`)
     }
   }
 
-  // Auth error - redirect to login with error
   return NextResponse.redirect(`${origin}/login?error=auth_failed`)
 }

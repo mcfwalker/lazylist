@@ -1,63 +1,39 @@
 /**
  * Authentication API Route
  *
- * Handles magic link authentication via Supabase Auth.
+ * Handles Google OAuth authentication via Supabase Auth.
  *
- * POST /api/auth - Send magic link email
+ * POST /api/auth - Initiate Google OAuth sign-in
  * DELETE /api/auth - Logout (clear session)
  */
-import { NextRequest, NextResponse } from 'next/server'
-import { checkRateLimit } from '@/lib/security'
+import { NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase'
 
 /**
- * Send a magic link to the user's email for passwordless authentication.
- * Rate limited to 5 attempts per 15 minutes per IP address.
- *
- * @param request - Must contain JSON body with { email: string }
- * @returns Success message or error
+ * Initiate Google OAuth sign-in via Supabase.
+ * Returns the Google OAuth URL for the client to navigate to.
  */
-export async function POST(request: NextRequest) {
-  // Rate limit by IP
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
-  const rateLimit = checkRateLimit(`auth:${ip}`, 5, 15 * 60 * 1000) // 5 attempts per 15 min
-
-  if (!rateLimit.allowed) {
-    return NextResponse.json(
-      { error: 'Too many attempts. Try again later.' },
-      {
-        status: 429,
-        headers: {
-          'Retry-After': String(Math.ceil(rateLimit.resetIn / 1000))
-        }
-      }
-    )
-  }
-
+export async function POST() {
   try {
-    const { email } = await request.json()
-
-    if (!email) {
-      return NextResponse.json({ error: 'Email required' }, { status: 400 })
-    }
-
-    // Send magic link via Supabase Auth
     const supabase = await createServerClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.toLowerCase().trim(),
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+        queryParams: {
+          prompt: 'select_account',
+        },
       },
     })
 
-    if (error) {
-      console.error('Magic link error:', error)
-      return NextResponse.json({ error: 'Failed to send magic link' }, { status: 500 })
+    if (error || !data.url) {
+      console.error('Google OAuth error:', error)
+      return NextResponse.json({ error: 'Failed to initiate login' }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, message: 'Check your email for the magic link' })
+    return NextResponse.json({ url: data.url })
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Failed to initiate login' }, { status: 500 })
   }
 }
 
