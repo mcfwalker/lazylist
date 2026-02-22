@@ -3,6 +3,7 @@
 
 import { createServiceClient } from '@/lib/supabase'
 import { generateScript, estimateDuration, updateUserContext, DigestItem, MemoItem, TrendItem } from './generator'
+import { getContainerActivity, getCrossReferences, getProjectMatches } from './data-fetchers'
 import { textToSpeech } from './tts'
 import { sendVoiceMessage, sendTextMessage } from './sender'
 import { EMPTY_DAY_SCRIPT } from './molly'
@@ -19,19 +20,28 @@ export interface DigestUser {
 }
 
 // Main orchestrator: generate and send a digest for a user
-export async function generateAndSendDigest(user: DigestUser): Promise<void> {
+export async function generateAndSendDigest(
+  user: DigestUser,
+  frequency: 'daily' | 'weekly' = 'daily'
+): Promise<void> {
   const supabase = createServiceClient()
 
-  console.log(`Generating digest for user ${user.id} (${user.display_name})`)
+  console.log(`Generating ${frequency} digest for user ${user.id} (${user.display_name})`)
 
-  // 1. Get items from last 24 hours
-  const items = await getItemsForDigest(user.id)
+  // Compute digest window
+  const windowMs = frequency === 'weekly' ? 7 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
+  const since = new Date(Date.now() - windowMs)
 
-  // 1b. Get pending memos (Molly's discoveries)
-  const memos = await getPendingMemos(user.id)
-
-  // 1c. Get pending trends
-  const trends = await getPendingTrends(user.id)
+  // Fetch all data sources in parallel
+  const [items, memos, trends, containerActivity, crossReferences, projectMatches] =
+    await Promise.all([
+      getItemsForDigest(user.id, since),
+      getPendingMemos(user.id),
+      getPendingTrends(user.id),
+      getContainerActivity(user.id, since),
+      getCrossReferences(user.id, since),
+      getProjectMatches(user.id, since),
+    ])
 
   if (items.length === 0) {
     // Send "nothing new" message
@@ -67,9 +77,13 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
       timezone: user.timezone,
       mollyContext: user.molly_context,
     },
+    frequency,
     items,
     memos,
     trends,
+    containerActivity,
+    crossReferences,
+    projectMatches,
     previousDigest,
   })
   anthropicCost += scriptCost
@@ -156,18 +170,16 @@ export async function generateAndSendDigest(user: DigestUser): Promise<void> {
   }
 }
 
-// Get items captured in the last 24 hours for a user
-async function getItemsForDigest(userId: string): Promise<DigestItem[]> {
+// Get items captured within the digest window for a user
+async function getItemsForDigest(userId: string, since: Date): Promise<DigestItem[]> {
   const supabase = createServiceClient()
-
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
   const { data, error } = await supabase
     .from('items')
     .select('id, title, summary, domain, content_type, tags, source_url')
     .eq('user_id', userId)
     .eq('status', 'processed')
-    .gte('processed_at', oneDayAgo)
+    .gte('processed_at', since.toISOString())
     .order('processed_at', { ascending: false })
 
   if (error) {
@@ -216,14 +228,13 @@ async function getPreviousDigest(userId: string): Promise<{
 }
 
 // Get users whose digest time matches the current hour
-export async function getUsersForDigestNow(): Promise<DigestUser[]> {
+export async function getUsersForDigestNow(): Promise<{ user: DigestUser; frequency: 'daily' | 'weekly' }[]> {
   const supabase = createServiceClient()
 
-  // Get all users with digest enabled
   const { data: users, error } = await supabase
     .from('users')
-    .select('id, display_name, telegram_user_id, digest_enabled, digest_time, timezone, molly_context')
-    .eq('digest_enabled', true)
+    .select('id, display_name, telegram_user_id, digest_frequency, digest_day, digest_time, timezone, molly_context')
+    .in('digest_frequency', ['daily', 'weekly'])
     .not('telegram_user_id', 'is', null)
 
   if (error || !users) {
@@ -235,7 +246,6 @@ export async function getUsersForDigestNow(): Promise<DigestUser[]> {
 
   return users.filter((user) => {
     try {
-      // Convert current UTC time to user's timezone
       const userTimeStr = now.toLocaleString('en-US', {
         timeZone: user.timezone || 'America/Los_Angeles',
         hour: 'numeric',
@@ -246,17 +256,33 @@ export async function getUsersForDigestNow(): Promise<DigestUser[]> {
       const [hourStr, minuteStr] = userTimeStr.split(':')
       const userHour = parseInt(hourStr, 10)
       const userMinute = parseInt(minuteStr, 10)
-
-      // Parse user's preferred time
       const [prefHour] = (user.digest_time || '07:00').split(':').map(Number)
 
-      // Match if we're in the right hour and within first 5 minutes
-      return userHour === prefHour && userMinute < 5
+      // Must match preferred hour and be within first 5 minutes
+      if (userHour !== prefHour || userMinute >= 5) return false
+
+      // For weekly, also check day of week
+      if (user.digest_frequency === 'weekly') {
+        const userDayStr = now.toLocaleString('en-US', {
+          timeZone: user.timezone || 'America/Los_Angeles',
+          weekday: 'short',
+        })
+        const dayMap: Record<string, number> = {
+          'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6
+        }
+        const userDay = dayMap[userDayStr] ?? -1
+        if (userDay !== (user.digest_day ?? 1)) return false
+      }
+
+      return true
     } catch (e) {
       console.error(`Error checking time for user ${user.id}:`, e)
       return false
     }
-  }) as DigestUser[]
+  }).map(user => ({
+    user: user as unknown as DigestUser,
+    frequency: user.digest_frequency as 'daily' | 'weekly',
+  }))
 }
 
 // Get pending memos (Molly's discoveries) for a user

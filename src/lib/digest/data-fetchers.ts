@@ -146,7 +146,7 @@ export async function getProjectMatches(
 
     for (const item of items) {
       const itemTags = (item.tags || []).map((t: string) => t.toLowerCase())
-      const overlap = itemTags.filter(t => projectTags.has(t))
+      const overlap = itemTags.filter((t: string) => projectTags.has(t))
       if (overlap.length > 0) {
         matched.push({
           itemId: item.id,
