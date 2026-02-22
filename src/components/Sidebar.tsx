@@ -3,54 +3,14 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ThemeToggle } from './ThemeToggle'
-import { DOMAINS } from './FilterBar'
 import styles from './Sidebar.module.css'
-
-interface ContainerOption {
-  id: string
-  name: string
-  item_count: number
-}
 
 interface SidebarProps {
   isAdmin: boolean
   onLogout: () => void
-  // Filter state
-  domain: string
-  contentType: string
-  status: string
-  total: number
-  container: string
-  containers: ContainerOption[]
-  project: string
-  projects: { id: string; name: string; stage: string | null }[]
-  onDomainChange: (value: string) => void
-  onContentTypeChange: (value: string) => void
-  onStatusChange: (value: string) => void
-  onContainerChange: (value: string) => void
-  onProjectChange: (value: string) => void
 }
 
-const CONTENT_TYPES = ['all', 'repo', 'technique', 'tool', 'resource', 'person']
-const STATUSES = ['all', 'processed', 'pending', 'failed']
-
-export function Sidebar({
-  isAdmin,
-  onLogout,
-  domain,
-  contentType,
-  status,
-  total,
-  container,
-  containers,
-  project,
-  projects,
-  onDomainChange,
-  onContentTypeChange,
-  onStatusChange,
-  onContainerChange,
-  onProjectChange,
-}: SidebarProps) {
+export function Sidebar({ isAdmin, onLogout }: SidebarProps) {
   const pathname = usePathname()
 
   return (
@@ -63,7 +23,6 @@ export function Sidebar({
       </div>
 
       <nav className={styles.nav}>
-        <span className={styles.sectionLabel}>Navigation</span>
         <Link href="/" className={`${styles.navLink} ${pathname === '/' ? styles.active : ''}`}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -100,52 +59,6 @@ export function Sidebar({
           </Link>
         )}
       </nav>
-
-      <div className={styles.filters}>
-        <span className={styles.sectionLabel}>Filters</span>
-        {containers.length > 0 && (
-          <select value={container} onChange={(e) => onContainerChange(e.target.value)}>
-            <option value="all">All Containers</option>
-            {containers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.item_count})
-              </option>
-            ))}
-          </select>
-        )}
-        {projects.length > 0 && (
-          <select value={project} onChange={(e) => onProjectChange(e.target.value)}>
-            <option value="all">All Projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        )}
-        <select value={domain} onChange={(e) => onDomainChange(e.target.value)}>
-          {DOMAINS.map((d) => (
-            <option key={d} value={d}>
-              {d === 'all' ? 'All Domains' : d}
-            </option>
-          ))}
-        </select>
-        <select value={contentType} onChange={(e) => onContentTypeChange(e.target.value)}>
-          {CONTENT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t === 'all' ? 'All Types' : t}
-            </option>
-          ))}
-        </select>
-        <select value={status} onChange={(e) => onStatusChange(e.target.value)}>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {s === 'all' ? 'All Status' : s}
-            </option>
-          ))}
-        </select>
-        <span className={styles.count}>{total} items</span>
-      </div>
 
       <div className={styles.bottom}>
         <ThemeToggle />

@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import styles from './page.module.css'
 
 interface UserSettings {
@@ -100,13 +98,6 @@ export default function SettingsPage() {
 
   return (
     <main className={styles.main}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.backLink}>
-          &larr; Back to List
-        </Link>
-        <ThemeToggle />
-      </header>
-
       <h1 className={styles.title}>Settings</h1>
 
       <section className={styles.section}>

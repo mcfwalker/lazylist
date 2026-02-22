@@ -1,9 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import Link from 'next/link'
 import { Container } from '@/lib/supabase'
-import { ThemeToggle } from '@/components/ThemeToggle'
 import styles from './page.module.css'
 
 interface ContainerItem {
@@ -152,13 +150,6 @@ export default function ContainersPage() {
 
   return (
     <main className={styles.main}>
-      <header className={styles.header}>
-        <Link href="/" className={styles.backLink}>
-          &larr; Back to List
-        </Link>
-        <ThemeToggle />
-      </header>
-
       <h1 className={styles.title}>Containers</h1>
 
       {containers.length === 0 ? (

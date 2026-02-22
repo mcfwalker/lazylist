@@ -1,47 +1,4 @@
-/* ===== Layout ===== */
-
-.layout {
-  display: flex;
-  min-height: 100vh;
-}
-
-.content {
-  flex: 1;
-  margin-left: 220px;
-  padding: 20px;
-  max-width: 900px;
-}
-
-@media (max-width: 768px) {
-  .content {
-    margin-left: 0;
-    padding: 16px;
-    max-width: 100%;
-  }
-}
-
-/* ===== Content header (search bar + mobile controls) ===== */
-
-.contentHeader {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.mobileLogo {
-  display: none;
-  height: 24px;
-  width: auto;
-  color: var(--text);
-  flex-shrink: 0;
-}
-
-@media (max-width: 768px) {
-  .mobileLogo {
-    display: block;
-  }
-}
+/* ===== Search ===== */
 
 .search {
   padding: 8px 16px;
@@ -52,6 +9,7 @@
   color: var(--text);
   width: 100%;
   max-width: 400px;
+  margin-bottom: 16px;
 }
 
 .search:focus {
@@ -59,54 +17,50 @@
   border-color: var(--accent);
 }
 
-@media (max-width: 768px) {
-  .search {
-    flex: 1;
-    max-width: none;
-  }
-}
+/* ===== Filters ===== */
 
-/* ===== Mobile inline filters ===== */
-
-.mobileFilters {
-  display: none;
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  align-items: center;
 }
 
 @media (max-width: 768px) {
-  .mobileFilters {
-    display: flex;
+  .filters {
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 16px;
-    align-items: center;
   }
 
-  .mobileFilters select {
+  .filters select {
     flex: 1;
     min-width: 100px;
-    padding: 8px 32px 8px 12px;
-    font-size: 13px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--bg-card);
-    color: var(--text);
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    cursor: pointer;
-  }
-
-  .mobileFilters select:focus {
-    outline: none;
-    border-color: var(--accent);
   }
 }
 
-.mobileCount {
-  font-size: 12px;
-  color: var(--text-muted);
+.filters select {
+  padding: 8px 32px 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text);
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+
+.filters select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.count {
   margin-left: auto;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 /* ===== Card list ===== */
