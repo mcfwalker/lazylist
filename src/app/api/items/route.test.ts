@@ -25,10 +25,14 @@ function createRequest(params: Record<string, string> = {}): NextRequest {
 function createSupabaseMock(defaultResult: { data: unknown[] | null; error: { message: string } | null; count: number | null } = { data: [{ id: '1', title: 'Test Item' }], error: null, count: 1 }) {
   let result = defaultResult
 
+  // Separate result for container_items pre-fetch (used when container param is set)
+  let containerItemsResult: { data: { item_id: string }[] | null; error: null } = { data: null, error: null }
+
   const mock = {
     from: vi.fn(),
     select: vi.fn(),
     eq: vi.fn(),
+    in: vi.fn(),
     or: vi.fn(),
     order: vi.fn(),
     range: vi.fn(),
@@ -39,12 +43,27 @@ function createSupabaseMock(defaultResult: { data: unknown[] | null; error: { me
     setResult: (newResult: typeof result) => {
       result = newResult
     },
+    setContainerItemsResult: (newResult: typeof containerItemsResult) => {
+      containerItemsResult = newResult
+    },
   }
 
   // Make all chainable methods return the mock
-  mock.from.mockReturnValue(mock)
+  mock.from.mockImplementation((table: string) => {
+    if (table === 'container_items') {
+      // Return a simpler chain for container_items pre-fetch
+      const ciMock = {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue(containerItemsResult),
+        }),
+      }
+      return ciMock
+    }
+    return mock
+  })
   mock.select.mockReturnValue(mock)
   mock.eq.mockReturnValue(mock)
+  mock.in.mockReturnValue(mock)
   mock.or.mockReturnValue(mock)
   mock.order.mockReturnValue(mock)
   mock.range.mockReturnValue(mock)
@@ -253,6 +272,38 @@ describe('items API route', () => {
       expect(mockQuery.order).toHaveBeenCalledWith('captured_at', {
         ascending: false,
       })
+    })
+  })
+
+  describe('container filter', () => {
+    it('returns empty when container has no items', async () => {
+      mockQuery.setContainerItemsResult({ data: [], error: null })
+
+      const request = createRequest({ container: 'container-empty' })
+      const response = await GET(request)
+      const data = await response.json()
+
+      expect(data.items).toEqual([])
+      expect(data.total).toBe(0)
+    })
+
+    it('filters by container item IDs when container param set', async () => {
+      mockQuery.setContainerItemsResult({
+        data: [{ item_id: 'item-1' }, { item_id: 'item-2' }],
+        error: null,
+      })
+
+      const request = createRequest({ container: 'container-abc' })
+      await GET(request)
+
+      expect(mockQuery.in).toHaveBeenCalledWith('id', ['item-1', 'item-2'])
+    })
+
+    it('does not call in() when no container param', async () => {
+      const request = createRequest()
+      await GET(request)
+
+      expect(mockQuery.in).not.toHaveBeenCalled()
     })
   })
 })

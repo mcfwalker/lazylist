@@ -109,6 +109,69 @@ describe('search', () => {
 
       expect(results).toEqual([])
     })
+
+    it('uses match_items_v2 when containerId is set', async () => {
+      const mockEmbedding = Array(1536).fill(0.1)
+      const mockResults = [
+        {
+          id: 'item-1',
+          title: 'Container Item',
+          summary: 'In container',
+          domain: 'vibe-coding',
+          content_type: 'repo',
+          tags: [],
+          github_url: null,
+          source_url: 'https://example.com',
+          similarity: 0.8,
+        },
+      ]
+
+      const { generateEmbedding } = await import('./embeddings')
+      vi.mocked(generateEmbedding).mockResolvedValue({
+        embedding: mockEmbedding,
+        cost: 0.00001,
+      })
+
+      const mockRpc = vi.fn().mockResolvedValue({ data: mockResults, error: null })
+      const { createClient } = await import('@supabase/supabase-js')
+      vi.mocked(createClient).mockReturnValue({
+        rpc: mockRpc,
+      } as unknown as ReturnType<typeof createClient>)
+
+      const { semanticSearch } = await import('./search')
+      const results = await semanticSearch('test query', {
+        userId: 'user-123',
+        containerId: 'container-abc',
+      })
+
+      expect(results.length).toBe(1)
+      expect(mockRpc).toHaveBeenCalledWith('match_items_v2', expect.objectContaining({
+        match_container_id: 'container-abc',
+      }))
+    })
+
+    it('uses match_items when containerId is not set', async () => {
+      const mockEmbedding = Array(1536).fill(0.1)
+
+      const { generateEmbedding } = await import('./embeddings')
+      vi.mocked(generateEmbedding).mockResolvedValue({
+        embedding: mockEmbedding,
+        cost: 0.00001,
+      })
+
+      const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
+      const { createClient } = await import('@supabase/supabase-js')
+      vi.mocked(createClient).mockReturnValue({
+        rpc: mockRpc,
+      } as unknown as ReturnType<typeof createClient>)
+
+      const { semanticSearch } = await import('./search')
+      await semanticSearch('test query', { userId: 'user-123' })
+
+      expect(mockRpc).toHaveBeenCalledWith('match_items', expect.not.objectContaining({
+        match_container_id: expect.anything(),
+      }))
+    })
   })
 
   describe('keywordSearch', () => {
@@ -146,6 +209,64 @@ describe('search', () => {
       expect(results.length).toBe(1)
       expect(results[0].title).toBe('Keyword Match')
       expect(results[0].similarity).toBe(0.5) // Default for keyword matches
+    })
+
+    it('returns empty when containerId filter has no items', async () => {
+      const mockEq = vi.fn().mockResolvedValue({ data: [], error: null })
+      const mockContainerSelect = vi.fn(() => ({ eq: mockEq }))
+      const mockFrom = vi.fn(() => ({ select: mockContainerSelect }))
+
+      const { createClient } = await import('@supabase/supabase-js')
+      vi.mocked(createClient).mockReturnValue({
+        from: mockFrom,
+      } as unknown as ReturnType<typeof createClient>)
+
+      const { keywordSearch } = await import('./search')
+      const results = await keywordSearch('keyword', {
+        userId: 'user-123',
+        containerId: 'container-empty',
+      })
+
+      expect(results).toEqual([])
+    })
+  })
+
+  describe('enrichWithContainers', () => {
+    it('returns container memberships for item IDs', async () => {
+      const mockEnrichment = [
+        { item_id: 'item-1', container_id: 'c-1', container_name: 'AI Tools' },
+        { item_id: 'item-1', container_id: 'c-2', container_name: 'Dev Resources' },
+      ]
+
+      const { createClient } = await import('@supabase/supabase-js')
+      vi.mocked(createClient).mockReturnValue({
+        rpc: vi.fn().mockResolvedValue({ data: mockEnrichment, error: null }),
+      } as unknown as ReturnType<typeof createClient>)
+
+      const { enrichWithContainers } = await import('./search')
+      const results = await enrichWithContainers(['item-1'])
+
+      expect(results.length).toBe(2)
+      expect(results[0].container_name).toBe('AI Tools')
+    })
+
+    it('returns empty array for empty input', async () => {
+      const { enrichWithContainers } = await import('./search')
+      const results = await enrichWithContainers([])
+
+      expect(results).toEqual([])
+    })
+
+    it('returns empty array on RPC error', async () => {
+      const { createClient } = await import('@supabase/supabase-js')
+      vi.mocked(createClient).mockReturnValue({
+        rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'Failed' } }),
+      } as unknown as ReturnType<typeof createClient>)
+
+      const { enrichWithContainers } = await import('./search')
+      const results = await enrichWithContainers(['item-1'])
+
+      expect(results).toEqual([])
     })
   })
 

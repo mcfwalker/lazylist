@@ -35,10 +35,25 @@ export async function GET(request: NextRequest) {
   const contentType = searchParams.get('type')
   const status = searchParams.get('status')
   const search = searchParams.get('q')
+  const container = searchParams.get('container')
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
   const offset = parseInt(searchParams.get('offset') || '0')
 
   const supabase = createServiceClient()
+
+  // If container filter, pre-fetch item IDs in that container
+  let containerItemIds: string[] | null = null
+  if (container) {
+    const { data: ciData } = await supabase
+      .from('container_items')
+      .select('item_id')
+      .eq('container_id', container)
+
+    containerItemIds = (ciData || []).map(ci => ci.item_id)
+    if (containerItemIds.length === 0) {
+      return NextResponse.json({ items: [], total: 0 })
+    }
+  }
 
   let query = supabase
     .from('items')
@@ -46,6 +61,10 @@ export async function GET(request: NextRequest) {
     .eq('user_id', userId)
     .order('captured_at', { ascending: false })
     .range(offset, offset + limit - 1)
+
+  if (containerItemIds) {
+    query = query.in('id', containerItemIds)
+  }
 
   if (domain) {
     query = query.eq('domain', domain)

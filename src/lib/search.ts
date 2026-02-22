@@ -19,6 +19,13 @@ export interface SearchOptions {
   userId: string
   limit?: number
   threshold?: number // minimum similarity (0-1)
+  containerId?: string // restrict results to a specific container
+}
+
+export interface ContainerEnrichment {
+  item_id: string
+  container_id: string
+  container_name: string
 }
 
 /**
@@ -39,7 +46,7 @@ export async function semanticSearch(
   query: string,
   options: SearchOptions
 ): Promise<SearchResult[]> {
-  const { userId, limit = 10, threshold = 0.5 } = options
+  const { userId, limit = 10, threshold = 0.5, containerId } = options
 
   // Generate embedding for the query
   const embeddingResult = await generateEmbedding(query)
@@ -50,13 +57,21 @@ export async function semanticSearch(
 
   const supabase = getSupabaseClient()
 
-  // Execute semantic search via RPC function
-  const { data, error } = await supabase.rpc('match_items', {
+  // Use match_items_v2 when container filter is set, otherwise original match_items
+  const rpcParams: Record<string, unknown> = {
     query_embedding: embeddingResult.embedding,
     match_user_id: userId,
     match_threshold: threshold,
     match_count: limit,
-  })
+  }
+
+  let rpcName = 'match_items'
+  if (containerId) {
+    rpcName = 'match_items_v2'
+    rpcParams.match_container_id = containerId
+  }
+
+  const { data, error } = await supabase.rpc(rpcName, rpcParams)
 
   if (error) {
     console.error('Semantic search error:', error)
@@ -73,16 +88,34 @@ export async function keywordSearch(
   query: string,
   options: SearchOptions
 ): Promise<SearchResult[]> {
-  const { userId, limit = 10 } = options
+  const { userId, limit = 10, containerId } = options
   const supabase = getSupabaseClient()
 
-  const { data, error } = await supabase
+  // If container filter, get item IDs first
+  let itemIds: string[] | null = null
+  if (containerId) {
+    const { data: containerItems } = await supabase
+      .from('container_items')
+      .select('item_id')
+      .eq('container_id', containerId)
+
+    itemIds = (containerItems || []).map(ci => ci.item_id)
+    if (itemIds.length === 0) return []
+  }
+
+  let q = supabase
     .from('items')
     .select('id, title, summary, domain, content_type, tags, github_url, source_url')
     .eq('user_id', userId)
     .eq('status', 'processed')
     .or(`title.ilike.%${query}%,summary.ilike.%${query}%`)
     .limit(limit)
+
+  if (itemIds) {
+    q = q.in('id', itemIds)
+  }
+
+  const { data, error } = await q
 
   if (error) {
     console.error('Keyword search error:', error)
@@ -112,4 +145,26 @@ export async function hybridSearch(
 
   // Fallback to keyword search
   return keywordSearch(query, options)
+}
+
+/**
+ * Batch-enrich search results with container memberships via RPC
+ */
+export async function enrichWithContainers(
+  itemIds: string[]
+): Promise<ContainerEnrichment[]> {
+  if (itemIds.length === 0) return []
+
+  const supabase = getSupabaseClient()
+
+  const { data, error } = await supabase.rpc('get_item_containers', {
+    item_ids: itemIds,
+  })
+
+  if (error) {
+    console.error('Container enrichment error:', error)
+    return []
+  }
+
+  return (data || []) as ContainerEnrichment[]
 }

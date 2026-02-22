@@ -20,6 +20,8 @@ export default function Home() {
   const [status, setStatus] = useState('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [container, setContainer] = useState('all')
+  const [containers, setContainers] = useState<{ id: string; name: string; item_count: number }[]>([])
 
   const handleLogout = async () => {
     await fetch('/api/auth', { method: 'DELETE' })
@@ -33,6 +35,7 @@ export default function Home() {
     if (contentType !== 'all') params.set('type', contentType)
     if (status !== 'all') params.set('status', status)
     if (search) params.set('q', search)
+    if (container !== 'all') params.set('container', container)
 
     try {
       const res = await fetch(`/api/items?${params}`)
@@ -44,7 +47,7 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }, [domain, contentType, status, search])
+  }, [domain, contentType, status, search, container])
 
   useEffect(() => {
     fetchItems()
@@ -74,6 +77,22 @@ export default function Home() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ timezone: tz }),
     }).catch(() => {}) // Silent failure - non-critical
+  }, [])
+
+  // Fetch containers for filter dropdown
+  useEffect(() => {
+    async function fetchContainers() {
+      try {
+        const res = await fetch('/api/containers')
+        if (res.ok) {
+          const data = await res.json()
+          setContainers(data.containers || [])
+        }
+      } catch (err) {
+        console.error('Error fetching containers:', err)
+      }
+    }
+    fetchContainers()
   }, [])
 
   const updateItem = async (id: string, updates: Partial<Item>) => {
@@ -144,6 +163,11 @@ export default function Home() {
               </svg>
             </Link>
           )}
+          <Link href="/containers" className={styles.iconButton} title="Containers">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+          </Link>
           <Link href="/settings" className={styles.iconButton} title="Settings">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="4" y1="21" x2="4" y2="14"/>
@@ -173,9 +197,12 @@ export default function Home() {
         contentType={contentType}
         status={status}
         total={total}
+        container={container}
+        containers={containers}
         onDomainChange={setDomain}
         onContentTypeChange={setContentType}
         onStatusChange={setStatus}
+        onContainerChange={setContainer}
       />
 
       <div className={styles.list}>

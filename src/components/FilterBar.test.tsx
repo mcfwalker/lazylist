@@ -81,4 +81,49 @@ describe('FilterBar', () => {
     expect(DOMAINS).toContain('ai-filmmaking')
     expect(DOMAINS).toContain('other')
   })
+
+  it('renders container dropdown when containers are provided', () => {
+    const containers = [
+      { id: 'c1', name: 'AI Tools', item_count: 5 },
+      { id: 'c2', name: 'Dev Resources', item_count: 3 },
+    ]
+    render(
+      <FilterBar
+        {...defaultProps}
+        container="all"
+        containers={containers}
+        onContainerChange={vi.fn()}
+      />
+    )
+
+    expect(screen.getByDisplayValue('All Containers')).toBeInTheDocument()
+    expect(screen.getByText('AI Tools (5)')).toBeInTheDocument()
+    expect(screen.getByText('Dev Resources (3)')).toBeInTheDocument()
+  })
+
+  it('does not render container dropdown without containers', () => {
+    render(<FilterBar {...defaultProps} />)
+
+    expect(screen.queryByDisplayValue('All Containers')).not.toBeInTheDocument()
+  })
+
+  it('calls onContainerChange when container filter changes', () => {
+    const onContainerChange = vi.fn()
+    const containers = [
+      { id: 'c1', name: 'AI Tools', item_count: 5 },
+    ]
+    render(
+      <FilterBar
+        {...defaultProps}
+        container="all"
+        containers={containers}
+        onContainerChange={onContainerChange}
+      />
+    )
+
+    const containerSelect = screen.getByDisplayValue('All Containers')
+    fireEvent.change(containerSelect, { target: { value: 'c1' } })
+
+    expect(onContainerChange).toHaveBeenCalledWith('c1')
+  })
 })

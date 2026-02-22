@@ -20,8 +20,8 @@ vi.mock('@/lib/supabase', () => ({
   createServiceClient: vi.fn(),
 }))
 
-vi.mock('@/lib/processors', () => ({
-  processItem: vi.fn(),
+vi.mock('@/inngest/client', () => ({
+  inngest: { send: vi.fn().mockResolvedValue(undefined) },
 }))
 
 vi.mock('@/lib/telegram', () => ({
@@ -31,7 +31,7 @@ vi.mock('@/lib/telegram', () => ({
 }))
 
 import { createServiceClient } from '@/lib/supabase'
-import { processItem } from '@/lib/processors'
+import { inngest } from '@/inngest/client'
 import { sendMessage, getUserByTelegramId, extractUrl } from '@/lib/telegram'
 
 const TEST_USER = {
@@ -107,7 +107,6 @@ describe('telegram webhook route', () => {
     vi.mocked(createServiceClient).mockReturnValue(
       mockSupabase as unknown as ReturnType<typeof createServiceClient>
     )
-    vi.mocked(processItem).mockResolvedValue(undefined)
     vi.mocked(getUserByTelegramId).mockResolvedValue(TEST_USER)
     vi.mocked(extractUrl).mockReturnValue('https://example.com')
     vi.mocked(sendMessage).mockResolvedValue(true)
@@ -328,7 +327,7 @@ describe('telegram webhook route', () => {
       })
     })
 
-    it('schedules background processing via after()', async () => {
+    it('sends item/captured event to Inngest', async () => {
       const request = createTelegramUpdate(
         123,
         123,
@@ -336,70 +335,16 @@ describe('telegram webhook route', () => {
       )
       await POST(request)
 
-      expect(afterCallbacks).toHaveLength(1)
-    })
-
-    it('sends follow-up with title and summary after processing', async () => {
-      mockSupabase.single
-        .mockReturnValueOnce({ data: { id: 'new-item-id' }, error: null })
-        .mockReturnValueOnce({
-          data: {
-            title: 'Example Article',
-            summary: 'This is a summary',
-            status: 'processed',
-          },
-          error: null,
-        })
-
-      const request = createTelegramUpdate(
-        123,
-        123,
-        'Check https://example.com'
-      )
-      await POST(request)
-
-      // Execute the after() callback
-      await afterCallbacks[0]()
-
-      expect(sendMessage).toHaveBeenCalledWith(
-        123,
-        '✓ Example Article\nThis is a summary'
-      )
-    })
-
-    it('truncates long summaries in follow-up', async () => {
-      const longSummary = 'x'.repeat(300)
-      // Clear sendMessage mock calls from previous tests
-      vi.mocked(sendMessage).mockClear()
-
-      // Reset and set up fresh mock chain
-      mockSupabase.single = vi.fn()
-        .mockReturnValueOnce({ data: { id: 'new-item-id' }, error: null })
-        .mockReturnValueOnce({
-          data: {
-            title: 'Title',
-            summary: longSummary,
-            status: 'processed',
-          },
-          error: null,
-        })
-      mockSupabase.insert.mockReturnValue(mockSupabase)
-      mockSupabase.select.mockReturnValue(mockSupabase)
-
-      const request = createTelegramUpdate(
-        123,
-        123,
-        'Check https://example.com'
-      )
-      await POST(request)
-      await afterCallbacks[0]()
-
-      // Find the success message (starts with ✓)
-      const calls = vi.mocked(sendMessage).mock.calls
-      const successCall = calls.find((c) => c[1].startsWith('✓'))
-      expect(successCall).toBeDefined()
-      expect(successCall?.[1]).toContain('...')
-      expect(successCall?.[1].length).toBeLessThan(250)
+      expect(inngest.send).toHaveBeenCalledWith({
+        name: 'item/captured',
+        data: {
+          itemId: 'new-item-id',
+          sourceType: 'article',
+          sourceUrl: 'https://example.com/',
+          userId: TEST_USER.id,
+          chatId: 123,
+        },
+      })
     })
   })
 
@@ -424,25 +369,6 @@ describe('telegram webhook route', () => {
       expect(sendMessage).toHaveBeenCalledWith(
         123,
         'Failed to capture - check the web app'
-      )
-    })
-
-    it('sends error message when processing fails', async () => {
-      vi.mocked(processItem).mockRejectedValue(new Error('Processing failed'))
-
-      const request = createTelegramUpdate(
-        123,
-        123,
-        'Check https://example.com'
-      )
-      await POST(request)
-
-      // Execute the after() callback
-      await afterCallbacks[0]()
-
-      expect(sendMessage).toHaveBeenCalledWith(
-        123,
-        'Failed to process - check the web app'
       )
     })
 
