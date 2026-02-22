@@ -33,7 +33,8 @@ describe('User Settings API Routes', () => {
       vi.mocked(getCurrentUserId).mockReturnValue('user-123')
       mockSupabase.single.mockResolvedValue({
         data: {
-          digest_enabled: true,
+          digest_frequency: 'daily',
+          digest_day: 1,
           digest_time: '08:00',
           timezone: 'America/New_York',
         },
@@ -46,7 +47,8 @@ describe('User Settings API Routes', () => {
 
       expect(response.status).toBe(200)
       expect(data).toEqual({
-        digest_enabled: true,
+        digest_frequency: 'daily',
+        digest_day: 1,
         digest_time: '08:00',
         timezone: 'America/New_York',
       })
@@ -56,7 +58,8 @@ describe('User Settings API Routes', () => {
       vi.mocked(getCurrentUserId).mockReturnValue('user-123')
       mockSupabase.single.mockResolvedValue({
         data: {
-          digest_enabled: null,
+          digest_frequency: null,
+          digest_day: null,
           digest_time: null,
           timezone: null,
         },
@@ -68,7 +71,8 @@ describe('User Settings API Routes', () => {
       const data = await response.json()
 
       expect(data).toEqual({
-        digest_enabled: true,
+        digest_frequency: 'daily',
+        digest_day: 1,
         digest_time: '07:00',
         timezone: 'America/Los_Angeles',
       })
@@ -102,13 +106,13 @@ describe('User Settings API Routes', () => {
   })
 
   describe('PATCH /api/users/settings', () => {
-    it('should update digest_enabled', async () => {
+    it('should update digest_frequency', async () => {
       vi.mocked(getCurrentUserId).mockReturnValue('user-123')
       mockSupabase.eq.mockResolvedValue({ error: null })
 
       const request = new NextRequest('http://localhost/api/users/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ digest_enabled: false }),
+        body: JSON.stringify({ digest_frequency: 'weekly' }),
       })
 
       const response = await PATCH(request)
@@ -116,7 +120,52 @@ describe('User Settings API Routes', () => {
 
       expect(response.status).toBe(200)
       expect(data.success).toBe(true)
-      expect(mockSupabase.update).toHaveBeenCalledWith({ digest_enabled: false })
+      expect(mockSupabase.update).toHaveBeenCalledWith({ digest_frequency: 'weekly' })
+    })
+
+    it('should reject invalid digest_frequency', async () => {
+      vi.mocked(getCurrentUserId).mockReturnValue('user-123')
+
+      const request = new NextRequest('http://localhost/api/users/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ digest_frequency: 'hourly' }),
+      })
+
+      const response = await PATCH(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Invalid frequency')
+    })
+
+    it('should update digest_day with valid value', async () => {
+      vi.mocked(getCurrentUserId).mockReturnValue('user-123')
+      mockSupabase.eq.mockResolvedValue({ error: null })
+
+      const request = new NextRequest('http://localhost/api/users/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ digest_day: 5 }),
+      })
+
+      const response = await PATCH(request)
+
+      expect(response.status).toBe(200)
+      expect(mockSupabase.update).toHaveBeenCalledWith({ digest_day: 5 })
+    })
+
+    it('should reject invalid digest_day', async () => {
+      vi.mocked(getCurrentUserId).mockReturnValue('user-123')
+
+      const request = new NextRequest('http://localhost/api/users/settings', {
+        method: 'PATCH',
+        body: JSON.stringify({ digest_day: 7 }),
+      })
+
+      const response = await PATCH(request)
+      const data = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(data.error).toBe('Invalid day (0-6)')
     })
 
     it('should update digest_time with valid format', async () => {
@@ -139,7 +188,7 @@ describe('User Settings API Routes', () => {
 
       const request = new NextRequest('http://localhost/api/users/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ digest_time: '9:30' }), // Missing leading zero
+        body: JSON.stringify({ digest_time: '9:30' }),
       })
 
       const response = await PATCH(request)
@@ -186,7 +235,8 @@ describe('User Settings API Routes', () => {
       const request = new NextRequest('http://localhost/api/users/settings', {
         method: 'PATCH',
         body: JSON.stringify({
-          digest_enabled: true,
+          digest_frequency: 'weekly',
+          digest_day: 3,
           digest_time: '10:00',
           timezone: 'Asia/Tokyo',
         }),
@@ -196,7 +246,8 @@ describe('User Settings API Routes', () => {
 
       expect(response.status).toBe(200)
       expect(mockSupabase.update).toHaveBeenCalledWith({
-        digest_enabled: true,
+        digest_frequency: 'weekly',
+        digest_day: 3,
         digest_time: '10:00',
         timezone: 'Asia/Tokyo',
       })
@@ -209,7 +260,7 @@ describe('User Settings API Routes', () => {
       const request = new NextRequest('http://localhost/api/users/settings', {
         method: 'PATCH',
         body: JSON.stringify({
-          digest_enabled: true,
+          digest_frequency: 'daily',
           unknown_field: 'ignored',
         }),
       })
@@ -217,7 +268,7 @@ describe('User Settings API Routes', () => {
       const response = await PATCH(request)
 
       expect(response.status).toBe(200)
-      expect(mockSupabase.update).toHaveBeenCalledWith({ digest_enabled: true })
+      expect(mockSupabase.update).toHaveBeenCalledWith({ digest_frequency: 'daily' })
     })
 
     it('should return 400 when no valid updates provided', async () => {
@@ -240,7 +291,7 @@ describe('User Settings API Routes', () => {
 
       const request = new NextRequest('http://localhost/api/users/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ digest_enabled: true }),
+        body: JSON.stringify({ digest_frequency: 'daily' }),
       })
 
       const response = await PATCH(request)
@@ -256,7 +307,7 @@ describe('User Settings API Routes', () => {
 
       const request = new NextRequest('http://localhost/api/users/settings', {
         method: 'PATCH',
-        body: JSON.stringify({ digest_enabled: true }),
+        body: JSON.stringify({ digest_frequency: 'daily' }),
       })
 
       const response = await PATCH(request)

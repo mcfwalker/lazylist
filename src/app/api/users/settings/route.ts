@@ -7,7 +7,8 @@
  * PATCH /api/users/settings - Update settings
  *
  * Settings:
- * - digest_enabled: boolean - Whether to receive daily digests
+ * - digest_frequency: string - How often to receive digests (daily/weekly/never)
+ * - digest_day: number - Day of week for weekly digest (0=Sun, 6=Sat)
  * - digest_time: string - Time to deliver digest (HH:MM format)
  * - timezone: string - IANA timezone for digest scheduling
  */
@@ -19,7 +20,7 @@ import { getCurrentUserId } from '@/lib/auth'
  * Get current user settings.
  *
  * @param request - Contains auth header
- * @returns { digest_enabled, digest_time, timezone }
+ * @returns { digest_frequency, digest_day, digest_time, timezone }
  */
 export async function GET(request: NextRequest) {
   const userId = getCurrentUserId(request)
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
   const supabase = createServiceClient()
   const { data, error } = await supabase
     .from('users')
-    .select('digest_enabled, digest_time, timezone')
+    .select('digest_frequency, digest_day, digest_time, timezone')
     .eq('id', userId)
     .single()
 
@@ -39,7 +40,8 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    digest_enabled: data.digest_enabled ?? true,
+    digest_frequency: data.digest_frequency ?? 'daily',
+    digest_day: data.digest_day ?? 1,
     digest_time: data.digest_time ?? '07:00',
     timezone: data.timezone ?? 'America/Los_Angeles',
   })
@@ -61,12 +63,11 @@ export async function PATCH(request: NextRequest) {
   const updates = await request.json()
 
   // Validate updates
-  const allowed = ['digest_enabled', 'digest_time', 'timezone']
+  const allowed = ['digest_frequency', 'digest_day', 'digest_time', 'timezone']
   const filtered: Record<string, unknown> = {}
 
   for (const key of allowed) {
     if (key in updates) {
-      // Validate timezone
       if (key === 'timezone') {
         try {
           Intl.DateTimeFormat(undefined, { timeZone: updates[key] })
@@ -74,12 +75,20 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ error: 'Invalid timezone' }, { status: 400 })
         }
       }
-      // Validate time format (HH:MM)
       if (key === 'digest_time' && !/^\d{2}:\d{2}$/.test(updates[key])) {
         return NextResponse.json(
           { error: 'Invalid time format' },
           { status: 400 }
         )
+      }
+      if (key === 'digest_frequency' && !['daily', 'weekly', 'never'].includes(updates[key])) {
+        return NextResponse.json({ error: 'Invalid frequency' }, { status: 400 })
+      }
+      if (key === 'digest_day') {
+        const day = Number(updates[key])
+        if (!Number.isInteger(day) || day < 0 || day > 6) {
+          return NextResponse.json({ error: 'Invalid day (0-6)' }, { status: 400 })
+        }
       }
       filtered[key] = updates[key]
     }
