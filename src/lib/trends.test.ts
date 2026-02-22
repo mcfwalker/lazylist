@@ -158,3 +158,70 @@ describe('detectEmergence', () => {
     expect(signals).toHaveLength(0)
   })
 })
+
+describe('detectConvergence', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('detects container pairs sharing >= 2 recent items', async () => {
+    const mockFrom = vi.fn()
+    const supabase = { from: mockFrom } as any
+    const mockRpc = vi.fn()
+    supabase.rpc = mockRpc
+
+    mockFrom.mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({
+          data: [
+            { id: 'c-1', name: 'AI Tooling' },
+            { id: 'c-2', name: 'Game Design' },
+          ],
+          error: null,
+        }),
+      }),
+    }))
+
+    mockRpc.mockResolvedValue({
+      data: [
+        { container_a: 'c-1', container_b: 'c-2', shared_count: 3 },
+      ],
+      error: null,
+    })
+
+    const { detectConvergence } = await import('./trends')
+    const signals = await detectConvergence(supabase, 'user-1')
+
+    expect(signals).toHaveLength(1)
+    expect(signals[0].containerA.name).toBe('AI Tooling')
+    expect(signals[0].containerB.name).toBe('Game Design')
+    expect(signals[0].sharedItems).toBe(3)
+  })
+
+  it('returns empty when no containers overlap', async () => {
+    const mockFrom = vi.fn()
+    const supabase = { from: mockFrom } as any
+    const mockRpc = vi.fn()
+    supabase.rpc = mockRpc
+
+    mockFrom.mockImplementation(() => ({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({
+          data: [{ id: 'c-1', name: 'A' }],
+          error: null,
+        }),
+      }),
+    }))
+
+    mockRpc.mockResolvedValue({ data: [], error: null })
+
+    const { detectConvergence } = await import('./trends')
+    const signals = await detectConvergence(supabase, 'user-1')
+
+    expect(signals).toHaveLength(0)
+  })
+})

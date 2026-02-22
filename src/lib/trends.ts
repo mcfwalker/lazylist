@@ -116,3 +116,44 @@ export async function detectEmergence(
     firstSeen: row.first_seen,
   }))
 }
+
+// --- Convergence Detection ---
+
+const CONVERGENCE_THRESHOLD = 2
+const CONVERGENCE_WINDOW_DAYS = 30
+
+export async function detectConvergence(
+  supabase: any,
+  userId: string
+): Promise<ConvergenceSignal[]> {
+  const { data: containers, error: cErr } = await supabase
+    .from('containers')
+    .select('id, name')
+    .eq('user_id', userId)
+
+  if (cErr || !containers || containers.length < 2) return []
+
+  const containerMap = new Map<string, string>()
+  for (const c of containers) {
+    containerMap.set(c.id, c.name)
+  }
+
+  const cutoff = new Date(Date.now() - CONVERGENCE_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data, error } = await supabase.rpc('detect_container_convergence', {
+    p_user_id: userId,
+    p_cutoff: cutoff,
+    p_threshold: CONVERGENCE_THRESHOLD,
+  })
+
+  if (error || !data) return []
+
+  return data
+    .filter((row: any) => containerMap.has(row.container_a) && containerMap.has(row.container_b))
+    .map((row: any) => ({
+      type: 'convergence' as const,
+      containerA: { id: row.container_a, name: containerMap.get(row.container_a)! },
+      containerB: { id: row.container_b, name: containerMap.get(row.container_b)! },
+      sharedItems: row.shared_count,
+    }))
+}
