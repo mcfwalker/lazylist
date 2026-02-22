@@ -22,6 +22,9 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [container, setContainer] = useState('all')
   const [containers, setContainers] = useState<{ id: string; name: string; item_count: number }[]>([])
+  const [project, setProject] = useState('all')
+  const [projects, setProjects] = useState<{ id: string; name: string; stage: string | null }[]>([])
+  const [projectTags, setProjectTags] = useState<Record<string, { project_name: string; project_stage: string }[]>>({})
 
   const handleLogout = async () => {
     await fetch('/api/auth', { method: 'DELETE' })
@@ -36,6 +39,7 @@ export default function Home() {
     if (status !== 'all') params.set('status', status)
     if (search) params.set('q', search)
     if (container !== 'all') params.set('container', container)
+    if (project !== 'all') params.set('project', project)
 
     try {
       const res = await fetch(`/api/items?${params}`)
@@ -47,7 +51,7 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }, [domain, contentType, status, search, container])
+  }, [domain, contentType, status, search, container, project])
 
   useEffect(() => {
     fetchItems()
@@ -94,6 +98,43 @@ export default function Home() {
     }
     fetchContainers()
   }, [])
+
+  // Fetch projects for filter dropdown
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const res = await fetch('/api/projects')
+        if (res.ok) {
+          const data = await res.json()
+          setProjects(data.projects || [])
+        }
+      } catch (err) {
+        console.error('Error fetching projects:', err)
+      }
+    }
+    fetchProjects()
+  }, [])
+
+  // Fetch project tags for visible items (lazy batch)
+  useEffect(() => {
+    async function fetchProjectTags() {
+      if (items.length === 0) {
+        setProjectTags({})
+        return
+      }
+      const ids = items.map((item) => item.id).join(',')
+      try {
+        const res = await fetch(`/api/items/project-tags?ids=${ids}`)
+        if (res.ok) {
+          const data = await res.json()
+          setProjectTags(data.tags || {})
+        }
+      } catch (err) {
+        console.error('Error fetching project tags:', err)
+      }
+    }
+    fetchProjectTags()
+  }, [items])
 
   const updateItem = async (id: string, updates: Partial<Item>) => {
     try {
@@ -203,6 +244,9 @@ export default function Home() {
         onContentTypeChange={setContentType}
         onStatusChange={setStatus}
         onContainerChange={setContainer}
+        project={project}
+        projects={projects}
+        onProjectChange={setProject}
       />
 
       <div className={styles.list}>
@@ -220,6 +264,7 @@ export default function Home() {
               onUpdate={updateItem}
               onDelete={deleteItem}
               onRetry={retryItem}
+              projectTags={projectTags[item.id]}
             />
           ))
         )}
